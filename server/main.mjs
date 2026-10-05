@@ -137,6 +137,10 @@ async function discover(client) {
 
 /* ---------- Coletor ---------- */
 async function start() {
+  // A base do 1º turno é carregada já na partida, para que um erro (endereço errado, arquivo
+  // faltando) apareça em /healthz semanas antes da eleição, e não na hora
+  status.base = await resolveBaseline().catch((e) => { status.poller = `erro na base: ${e.message}`; throw e; });
+  console.log(`Base do 1º turno: ${status.base}`);
   let codes = env.PLEITO && env.ELEICAO ? { pleito: Number(env.PLEITO), eleicao: Number(env.ELEICAO), ciclo: env.CICLO ?? DEFAULTS.ciclo } : null;
   while (!codes) {
     codes = await discover(client).catch((e) => { console.warn("ele-c.json:", e.message); return null; });
@@ -148,7 +152,6 @@ async function start() {
     await new Promise((r) => setTimeout(r, 5 * 60000));
   }
   Object.assign(status, { pleito: codes.pleito, eleicao: codes.eleicao });
-  status.base = await resolveBaseline();
   status.poller = "coletando";
   status.fase = "coletando";
   console.log(`Coletando pleito ${codes.pleito}, eleição ${codes.eleicao}, base ${status.base}, saída ${LIVE_DIR}`);
