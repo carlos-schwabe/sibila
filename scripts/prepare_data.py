@@ -19,6 +19,7 @@ Layout de sections.bin (little-endian, N = número de seções):
 meta.json guarda a hierarquia (local -> zona -> município -> UF), os nomes e os códigos do TSE
 (município com 5 dígitos e número da zona), usados para casar com os arquivos ao vivo.
 """
+import argparse
 import json
 import struct
 from pathlib import Path
@@ -26,10 +27,18 @@ from pathlib import Path
 import duckdb
 
 ROOT = Path(__file__).resolve().parent.parent
-CSV = ROOT / "data" / "votacao_secao_2022_BR.csv"
-# Detalhe por seção: eleitores aptos e horários de totalização (detalhe_votacao_secao_2022.zip)
-DETAIL = ROOT / "data" / "detalhe_secao" / "*.csv"
-OUT = ROOT / "app" / "data"
+ARGS = argparse.ArgumentParser(description="Prepara a base por seção de um 2º turno presidencial.")
+ARGS.add_argument("--csv", default=str(ROOT / "data" / "votacao_secao_2022_BR.csv"), help="votacao_secao_<ano>_BR.csv")
+# Detalhe por seção: eleitores aptos e horários de totalização (detalhe_votacao_secao_<ano>.zip).
+# Sem ele (--sem-detalhe), aptos e horários ficam zerados: serve para estimar variâncias, não
+# para reproduzir a apuração.
+ARGS.add_argument("--detalhe", default=str(ROOT / "data" / "detalhe_secao" / "*.csv"))
+ARGS.add_argument("--sem-detalhe", action="store_true")
+ARGS.add_argument("--data-2t", default="2022-10-30", help="data do 2º turno (aaaa-mm-dd), para os horários")
+ARGS.add_argument("--cand-b", type=int, default=22, help="número do adversário do candidato 13 no 2º turno")
+ARGS.add_argument("--out", default=str(ROOT / "app" / "data"))
+A = ARGS.parse_args()
+CSV, DETAIL, OUT, CAND_B = A.csv, A.detalhe, Path(A.out), A.cand_b
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
@@ -42,25 +51,25 @@ def main() -> None:
         from read_csv('{CSV}', delim=';', header=true, encoding='latin-1', all_varchar=true)
         where CD_CARGO = '1'
     """)
+    DET_SQL = "select null uf, null::int muni, null::int zona, null::int secao, null::int aptos, null::int sec where false" if A.sem_detalhe else f"""
+            -- cada seção aparece duas vezes, com linhas idênticas
+            select distinct SG_UF uf, CD_MUNICIPIO::int muni, NR_ZONA::int zona, NR_SECAO::int secao, QT_APTOS::int aptos,
+                   epoch(strptime(DT_PRIM_TOT_PARCIAL_HOR_TSE, '%d/%m/%Y %H:%M:%S') - timestamp '{A.data_2t} 17:00:00')::int sec
+            from read_csv('{DETAIL}', delim=';', header=true, encoding='latin-1', all_varchar=true, union_by_name=true)
+            where NR_TURNO = '2' and CD_CARGO = '1'"""
     rows = con.execute(f"""
         with t2 as (
             select uf, muni, any_value(muni_name) muni_name, zona, any_value(lv) lv, secao,
-                   sum(votos) filter (votavel = 13) lula, sum(votos) filter (votavel = 22) bolso
+                   sum(votos) filter (votavel = 13) lula, sum(votos) filter (votavel = {CAND_B}) bolso
             from raw where turno = 2 group by uf, muni, zona, secao
-        ), det as (
-            -- cada seção aparece duas vezes, com linhas idênticas
-            select distinct SG_UF uf, CD_MUNICIPIO::int muni, NR_ZONA::int zona, NR_SECAO::int secao, QT_APTOS::int aptos,
-                   epoch(strptime(DT_PRIM_TOT_PARCIAL_HOR_TSE, '%d/%m/%Y %H:%M:%S') - timestamp '2022-10-30 17:00:00')::int sec
-            from read_csv('{DETAIL}', delim=';', header=true, encoding='latin-1', all_varchar=true, union_by_name=true)
-            where NR_TURNO = '2' and CD_CARGO = '1'
-        ), t1 as (
+        ), det as ({DET_SQL}), t1 as (
             select uf, muni, zona, secao, sum(votos) total, sum(votos) filter (votavel = 13) lula
             from raw where turno = 1 group by uf, muni, zona, secao
         )
         select t2.uf, t2.muni, t2.muni_name, t2.zona, t2.lv, t2.secao,
                coalesce(t1.total, 0), coalesce(t1.lula, 0), coalesce(t2.lula, 0), coalesce(t2.bolso, 0),
-               det.aptos, det.sec
-        from t2 left join t1 using (uf, muni, zona, secao) join det using (uf, muni, zona, secao)
+               coalesce(det.aptos, 0), coalesce(det.sec, 0)
+        from t2 left join t1 using (uf, muni, zona, secao) {"left join" if A.sem_detalhe else "join"} det using (uf, muni, zona, secao)
         order by t2.uf, t2.muni, t2.zona, t2.lv, t2.secao
     """).fetchall()
 

@@ -13,6 +13,12 @@ export function paths({ ciclo, pleito, eleicao }) {
     uf: (uf) => `/${ciclo}/${eleicao}/dados/${uf}/${uf}-c0001-e${e6}-u.json`,
     zona: (uf, mun, zona) => `/${ciclo}/${eleicao}/dados/${uf}/${uf}${pad(mun, 5)}-z${pad(zona, 4)}-c0001-e${e6}-u.json`,
     brasil: () => `/${ciclo}/${eleicao}/dados/br/br-c0001-e${e6}-u.json`,
+    // EA12: municípios da eleição (nomes e zonas)
+    municipios: () => `/${ciclo}/${eleicao}/config/mun-e${e6}-cm.json`,
+    // EA18: arquivo auxiliar de uma seção, que lista os arquivos da urna (BU, RDV, log)
+    aux: (uf, mun, zona, secao) => `/${ciclo}/arquivo-urna/${pleito}/dados/${uf}/${pad(mun, 5)}/${pad(zona, 4)}/${pad(secao, 4)}/p${p6}-${uf}-m${pad(mun, 5)}-z${pad(zona, 4)}-s${pad(secao, 4)}-aux.json`,
+    // arquivo da urna citado no aux (por exemplo o BU), dentro da pasta do hash
+    urna: (uf, mun, zona, secao, hash, nome) => `/${ciclo}/arquivo-urna/${pleito}/dados/${uf}/${pad(mun, 5)}/${pad(zona, 4)}/${pad(secao, 4)}/${hash}/${nome}`,
   };
 }
 

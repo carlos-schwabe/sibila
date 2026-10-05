@@ -4,3 +4,5 @@ __pycache__/
 /data/
 # Saída do coletor ao vivo
 /app/live/
+# Foto original do autor (a versão reduzida está em app/img/)
+/dev.png

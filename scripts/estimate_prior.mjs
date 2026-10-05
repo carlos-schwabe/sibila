@@ -1,11 +1,13 @@
 // Estima, na apuração completa de 2022, como o swing entre turnos varia em cada nível da
 // hierarquia. É a variância a priori usada quando a divulgação ao vivo só traz votos
 // agregados (projectFeed): os níveis abaixo do observado entram com estes valores.
-// Uso: node scripts/estimate_prior.mjs
+// Uso: node scripts/estimate_prior.mjs [pasta da base, padrão app/data/]
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { loadData, realOrder, project, DEFAULT_PROJ, LEVELS } from "../app/engine.js";
 
-const root = new URL("../app/data/", import.meta.url);
+const root = process.argv[2] ? pathToFileURL(resolve(process.argv[2]) + "/") : new URL("../app/data/", import.meta.url);
 const buf = readFileSync(new URL("sections.bin", root));
 const D = loadData(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), JSON.parse(readFileSync(new URL("meta.json", root), "utf8")));
 const [full] = project(D, realOrder(D), { ...DEFAULT_PROJ, targets: [D.N] });

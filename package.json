@@ -1,0 +1,12 @@
+{
+  "name": "sibila",
+  "private": true,
+  "type": "module",
+  "description": "Acompanhamento e projeção ao vivo do 2º turno presidencial",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/main.mjs",
+    "backtest": "node scripts/backtest.mjs",
+    "replay": "node server/replay-server.mjs --speed 30"
+  }
+}
