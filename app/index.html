@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sibila ao vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: uma coluna. Primeiro os cartões de situação, depois a apuração com o ponto de chegada projetado. */
+:root {
+  --bg: #f3f5f2; --surface: #fcfdfb; --ink: #121714; --ink2: #4b544e; --muted: #7f8781;
+  --grid: #e1e5e0; --axis: #c3c9c3; --line: rgba(18, 23, 20, 0.12);
+  --accent: #0b5d4e; --accent-ink: #ffffff;
+  --c-a: #d23c3b; --c-b: #2a78d6;
+  --open: #7f8781; --likely: #b07400; --decided: #0a7d0a;
+  --dev-bg: #1f2622; --dev-ink: #e9efe9;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1110; --surface: #171b19; --ink: #f2f5f2; --ink2: #c0c7c1; --muted: #8a918b;
+    --grid: #262c29; --axis: #3a423d; --line: rgba(255, 255, 255, 0.10);
+    --accent: #43b39a; --accent-ink: #0e1110;
+    --c-a: #e66767; --c-b: #3987e5;
+    --open: #8a918b; --likely: #fab219; --decided: #2fbf4a;
+    --dev-bg: #27302b; --dev-ink: #e9efe9;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1110; --surface: #171b19; --ink: #f2f5f2; --ink2: #c0c7c1; --muted: #8a918b;
+  --grid: #262c29; --axis: #3a423d; --line: rgba(255, 255, 255, 0.10);
+  --accent: #43b39a; --accent-ink: #0e1110;
+  --c-a: #e66767; --c-b: #3987e5;
+  --open: #8a918b; --likely: #fab219; --decided: #2fbf4a;
+  --dev-bg: #27302b; --dev-ink: #e9efe9;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
+.dev { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--dev-bg); color: var(--dev-ink); padding-inline: 20px; padding-block: 10px; }
+.dev-in { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.dev b { font: 600 11px var(--f-mono); letter-spacing: 0.08em; background: var(--likely); color: #1b1300; padding: 3px 7px; border-radius: 4px; }
+.dev input { width: 100%; accent-color: var(--likely); }
+.dev output { font: 500 13px var(--f-mono); min-width: 13ch; text-align: right; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 22px 48px; display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 24px; }
+h1 { font: 800 clamp(26px, 3.6vw, 40px)/1 var(--f-display); font-stretch: 78%; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 span { color: var(--muted); font-weight: 600; }
+.updated { font: 500 12px var(--f-mono); color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card .k { font: 600 11px var(--f-body); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.cand .who { display: flex; align-items: center; gap: 10px; }
+.cand .sw { width: 6px; align-self: stretch; border-radius: 3px; }
+.cand .name { font: 800 22px/1.05 var(--f-display); font-stretch: 85%; }
+.cand .meta { font-size: 12px; color: var(--muted); }
+.big { font: 700 38px/1 var(--f-display); font-stretch: 82%; font-variant-numeric: tabular-nums; }
+.big small { font: 500 13px var(--f-mono); color: var(--ink2); margin-left: 6px; }
+.sub { font-size: 12px; color: var(--ink2); }
+.proj { border-top: 1px solid var(--grid); padding-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.proj .v { font: 600 17px var(--f-mono); font-variant-numeric: tabular-nums; }
+.proj .v.dim { color: var(--muted); }
+.stage { display: inline-flex; align-items: center; gap: 6px; font: 600 11px var(--f-body); padding: 3px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; width: fit-content; }
+.stage.open { color: var(--open); } .stage.likely { color: var(--likely); } .stage.decided { color: var(--decided); }
+.winner .headline { font: 800 30px/1.05 var(--f-display); font-stretch: 80%; }
+.winner .prob { font: 600 15px var(--f-mono); }
+.winner.decided { border-color: var(--decided); box-shadow: inset 0 0 0 1px var(--decided); }
+.meter { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+.meter b { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.chartcard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 8px; min-width: 0; }
+.chartcard h2 { font: 700 18px var(--f-display); font-stretch: 85%; margin: 0; }
+.chartcard p { margin: 2px 0 8px; color: var(--muted); font-size: 12px; max-width: 80ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--ink2); margin-bottom: 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 18px; border-top: 2px solid var(--ink2); }
+.legend i.dash { border-top-style: dashed; }
+.legend i.box { height: 10px; border: 0; border-radius: 2px; background: color-mix(in srgb, var(--ink2) 22%, transparent); }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+svg text { font: 11px var(--f-mono); fill: var(--muted); }
+svg text.lab { font: 600 12px var(--f-body); }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); z-index: 5; min-width: 150px; }
+.tip .t { font: 600 11px var(--f-mono); color: var(--muted); margin-bottom: 4px; }
+.tip .r { display: grid; grid-template-columns: 14px auto 1fr; gap: 6px; align-items: center; }
+.tip .r b { font: 600 12px var(--f-mono); } .tip .r span { color: var(--ink2); }
+.tip .r i { width: 12px; border-top: 2px solid; }
+.tablecard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.tablecard h2 { font: 700 18px var(--f-display); font-stretch: 85%; margin: 0 0 8px; }
+.tablewrap { overflow-x: auto; }
+table.ufs { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.ufs th { font: 600 11px var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--axis); white-space: nowrap; cursor: pointer; user-select: none; }
+table.ufs th:first-child, table.ufs td:first-child { text-align: left; }
+table.ufs td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--grid); font-family: var(--f-mono); font-size: 12px; white-space: nowrap; }
+table.ufs td:first-child { font: 600 13px var(--f-body); }
+table.ufs td.lead { text-align: left; font-family: var(--f-body); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.bar { display: inline-block; vertical-align: middle; width: 56px; height: 6px; background: var(--grid); border-radius: 3px; margin-right: 8px; overflow: hidden; }
+.bar b { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.split { display: inline-flex; align-items: center; gap: 6px; }
+.split .pa { color: var(--c-a); min-width: 6ch; text-align: right; }
+.split .pb { color: var(--c-b); min-width: 6ch; text-align: left; }
+.split .track { position: relative; display: flex; width: 120px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--grid); }
+.split .track i { display: block; height: 100%; }
+.split .track i + i { margin-left: auto; }
+.split .track::after { content: ""; position: absolute; left: 50%; top: -1px; bottom: -1px; width: 2px; margin-left: -1px; background: var(--surface); }
+.note { color: var(--muted); font-size: 12px; max-width: 90ch; }
+.note a { color: var(--ink2); }
+.err { color: var(--c-a); font-weight: 600; }
+input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="dev" id="dev" hidden>
+  <div class="dev-in">
+    <b>DEV</b>
+    <input type="range" id="progress" min="0" max="1000" value="350" aria-label="Andamento da apuração (reprodução de 2022)">
+    <output id="progress-o"></output>
+  </div>
+</div>
+<div class="wrap">
+  <header>
+    <h1>Sibila <span>· 2º turno presidencial, projeção ao vivo</span></h1>
+    <div class="updated" id="updated" role="status">Carregando…</div>
+  </header>
+
+  <div class="cards" id="cards" aria-live="polite"></div>
+
+  <section class="chartcard">
+    <h2>Votos válidos</h2>
+    <p>As linhas contínuas são a apuração oficial. As tracejadas levam ao resultado final projetado de cada candidato, e a faixa sombreada mostra o intervalo de confiança de <span id="conf-l">95%</span>.</p>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section class="tablecard">
+    <h2>Estados</h2>
+    <div class="tablewrap"><table class="ufs" id="ufs"></table></div>
+  </section>
+
+  <p class="note" id="note"></p>
+</div>
+
+<script type="module">
+import { DEFAULT_PROJ, callStatus } from "./engine.js";
+
+// Sem âncora (DEV), reproduz o 2º turno de 2022 na ordem real de apuração; o controle define o
+// ponto da apuração. Com #live, lê o histórico gravado pelo coletor (server/poller.mjs) em live/.
+const DEV = location.hash !== "#live";
+addEventListener("hashchange", () => location.reload());
+// "lula" e "bolso" são os candidatos A (13) e B (22) do motor
+const CANDIDATES = DEV ? {
+  lula: { name: "Lula", full: "Luiz Inácio Lula da Silva", tag: "13 · PT", color: "--c-a" },
+  bolso: { name: "Bolsonaro", full: "Jair Messias Bolsonaro", tag: "22 · PL", color: "--c-b" },
+} : {
+  lula: { name: "Lula", full: "Luiz Inácio Lula da Silva", tag: "13 · PT", color: "--c-a" },
+  bolso: { name: "Flávio Bolsonaro", full: "Flávio Nantes Bolsonaro", tag: "22 · PL", color: "--c-b" },
+};
+const CERTAINTY = 0.999;
+const PROJ = { ...DEFAULT_PROJ };
+const ELECTION = DEV ? "30/10/2022" : "25/10/2026";
+const LIVE_REFRESH = 15000; // ms entre leituras do histórico ao vivo
+
+const $ = (id) => document.getElementById(id);
+const pct = (v, d = 2) => (v * 100).toFixed(d).replace(".", ",") + "%";
+const pp = (v, d = 2) => (v * 100).toFixed(d).replace(".", ",");
+const num = (v) => Math.round(v).toLocaleString("pt-BR");
+const clock = (min) => { const t = 17 * 60 + min; return `${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(Math.floor(t % 60)).padStart(2, "0")}`; };
+const conf = Math.round(PROJ.confidence * 100);
+$("conf-l").textContent = conf + "%";
+
+let N = 0, view = null, ufNames = [], ufSort = { key: "uf", dir: 1 };
+
+/* ---------- Motor (DEV) ---------- */
+const worker = DEV ? new Worker(new URL("./worker.js", import.meta.url), { type: "module" }) : null;
+let reqId = 0, pending = false, queued = false;
+function request() {
+  if (pending) { queued = true; return; }
+  pending = true;
+  worker.postMessage({ id: ++reqId, kind: "live", proj: PROJ, fraction: progress(), points: 300 });
+}
+if (DEV) worker.onmessage = ({ data }) => {
+  if (data.type === "meta") { N = data.N; ufNames = data.ufNames; return; }
+  pending = false;
+  if (data.type === "error") { $("updated").innerHTML = ""; const e = document.createElement("span"); e.className = "err"; e.textContent = "Falha na projeção: " + data.message; $("updated").append(e); return; }
+  view = { curve: data.curve, snap: data.snap, ufs: data.snap.ufs.map((u, i) => ({ ...u, uf: ufNames[i], counted: u.sections })), updated: null };
+  render();
+  if (queued) { queued = false; request(); }
+};
+if (DEV) worker.onerror = (e) => { $("updated").textContent = "Não foi possível iniciar o motor: " + (e.message || "erro no worker") + ". Sirva a pasta app por HTTP."; };
+
+/* ---------- Barra de progresso (DEV) ---------- */
+function progress() { return Math.max(0.001, +$("progress").value / 1000); }
+if (DEV) {
+  $("dev").hidden = false;
+  const show = () => { $("progress-o").textContent = `${pct(progress(), 1)} das seções`; };
+  show();
+  $("progress").addEventListener("input", () => { show(); request(); });
+  request();
+}
+
+/* ---------- Dados ao vivo (gravados pelo coletor) ---------- */
+async function loadLive() {
+  try {
+    const [history, latest] = await Promise.all(["live/history.json", "live/latest.json"].map((f) => fetch(f, { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`${f}: HTTP ${r.status}`); return r.json(); })));
+    if (!history.length) { $("updated").textContent = "Aguardando os primeiros resultados…"; return; }
+    N = latest.nSections;
+    const p = latest.point;
+    view = {
+      curve: history.map((h) => ({ sections: h.sections, time: h.t, raw: h.raw })),
+      snap: { ...p, time: p.t, lulaVotes: p.a, bolsoVotes: p.b },
+      ufs: latest.ufs,
+      updated: latest.updated,
+    };
+    render();
+  } catch (e) {
+    $("updated").textContent = `Não foi possível carregar os resultados ao vivo (${e.message}).`;
+  }
+}
+if (!DEV) { loadLive(); setInterval(loadLive, LIVE_REFRESH); }
+
+/* ---------- Renderização ---------- */
+function render() {
+  const { snap, curve } = view;
+  const st = callStatus(snap, CERTAINTY);
+  const upd = view.updated ? ` · atualizado às ${new Date(view.updated).toLocaleTimeString("pt-BR")}` : "";
+  $("updated").textContent = `${pct(snap.sections, 1)} das seções apuradas · ${clock(snap.time)}${DEV ? ` · reprodução de ${ELECTION}` : upd}`;
+  renderCards(snap, st);
+  renderChart(snap, curve, st);
+  renderStates(view.ufs);
+  $("note").textContent = `Projeção: cada seção ainda não apurada é estimada pelo seu resultado no 1º turno somado à variação entre turnos da ${DEV ? "área mais específica com seções apuradas suficientes (local de votação, zona, município, estado ou Brasil)" : "seções já apuradas do mesmo estado"}. "Provável vencedor" exige ${pct(CERTAINTY, 1)} de probabilidade. "Eleito" significa que a vantagem supera o número de eleitores aptos que ainda faltam apurar.`;
+}
+
+// Visão de um instante por candidato (% dos votos válidos)
+function cand(snap, key) {
+  const a = key === "lula";
+  return {
+    raw: a ? snap.raw : 1 - snap.raw,
+    votes: a ? snap.lulaVotes : snap.bolsoVotes,
+    share: a ? snap.share : 1 - snap.share,
+    lo: a ? snap.lo : 1 - snap.hi,
+    hi: a ? snap.hi : 1 - snap.lo,
+    pWin: a ? snap.pWin : 1 - snap.pWin,
+  };
+}
+const STAGE_TEXT = { open: "○ Indefinido", likely: "◐ Provável vencedor", decided: "✓ Eleito" };
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function renderCards(snap, st) {
+  const box = $("cards"); box.textContent = "";
+  for (const key of ["lula", "bolso"]) {
+    const c = CANDIDATES[key], v = cand(snap, key);
+    const card = el("article", "card cand");
+    const k = el("div", "k"); k.append(el("span", null, "Candidato"), el("span", null, c.tag));
+    const who = el("div", "who"); const sw = el("span", "sw"); sw.style.background = `var(${c.color})`;
+    const nm = el("div"); nm.append(el("div", "name", c.name), el("div", "meta", c.full));
+    who.append(sw, nm);
+    const big = el("div", "big"); big.append(document.createTextNode(pct(v.raw))); big.append(el("small", null, "apurado"));
+    const sub = el("div", "sub", `${num(v.votes)} votos`);
+    const proj = el("div", "proj");
+    proj.append(el("div", "k", "Projeção final"));
+    const pv = el("div", "v" + (st.stage === "open" ? " dim" : ""), `${pct(v.share)} ± ${pp(v.hi - v.share)}`);
+    proj.append(pv);
+    let stage = "open";
+    if (st.winner === key && st.stage !== "open") stage = st.stage;
+    else if (st.stage !== "open") stage = null;
+    if (stage) proj.append(el("span", "stage " + stage, STAGE_TEXT[stage]));
+    else proj.append(el("span", "sub", `${pct(v.pWin, 2)} de chance de vencer`));
+    card.append(k, who, big, sub, proj);
+    box.append(card);
+  }
+
+  // Cartão do vencedor
+  const w = el("article", "card winner " + st.stage);
+  w.append(el("div", "k", "Vencedor projetado"));
+  const lead = CANDIDATES[st.winner], lv = cand(snap, st.winner);
+  if (st.stage === "open") {
+    w.append(el("div", "headline", "Indefinido"));
+    w.append(el("div", "prob", `${lead.name} ${pct(lv.pWin, 1)}`));
+    w.append(el("div", "sub", `Disputa ainda indefinida. É preciso ${pct(CERTAINTY, 1)} para apontar o vencedor.`));
+  } else if (st.stage === "likely") {
+    w.append(el("div", "headline", lead.name));
+    w.append(el("div", "prob", lv.pWin > 0.99999 ? "> 99,999%" : pct(lv.pWin, 3)));
+    w.append(el("div", "sub", "Probabilidade de vitória, segundo a projeção."));
+  } else {
+    w.append(el("div", "headline", `${lead.name} eleito`));
+    const margin = Math.abs(snap.lulaVotes - snap.bolsoVotes);
+    w.append(el("div", "prob", "Matematicamente definido"));
+    w.append(el("div", "sub", `A vantagem de ${num(margin)} votos supera os ${num(snap.aptosLeft)} eleitores aptos que ainda faltam apurar.`));
+  }
+  w.append(el("span", "stage " + st.stage, STAGE_TEXT[st.stage]));
+  box.append(w);
+
+  // Cartão de andamento da apuração
+  const p = el("article", "card");
+  p.append(el("div", "k", "Apuração"));
+  const big = el("div", "big"); big.append(document.createTextNode(pct(snap.sections, 1))); big.append(el("small", null, "das seções"));
+  const meter = el("div", "meter"); const mb = el("b"); mb.style.width = (snap.sections * 100).toFixed(2) + "%"; meter.append(mb);
+  p.append(big, meter,
+    el("div", "sub", `${num(snap.done)} de ${num(N)} seções · ${num(snap.lulaVotes + snap.bolsoVotes)} votos válidos`),
+    el("div", "sub", `Última atualização às ${clock(snap.time)}${DEV ? ` (${ELECTION})` : ""}`));
+  box.append(p);
+}
+
+function scale(d0, d1, r0, r1) { const k = (r1 - r0) / (d1 - d0 || 1); const f = (v) => r0 + (v - d0) * k; f.inv = (p) => d0 + (p - r0) / k; return f; }
+const fmt = (n) => n.toFixed(1);
+
+function renderChart(snap, curve, st) {
+  const box = $("chart");
+  const w = Math.max(300, box.clientWidth), h = w < 600 ? 300 : 400;
+  const m = { l: 44, r: w < 600 ? 92 : 132, t: 12, b: 28 };
+  const iw = w - m.l - m.r, ih = h - m.t - m.b;
+  const X = scale(0, 100, m.l, m.l + iw);
+  const keys = ["lula", "bolso"];
+  // Eixo y simétrico em torno de 50%, largo o bastante para as linhas apuradas e o intervalo
+  let dev = 0.03;
+  for (const c of curve) if (c.sections > 0.01) dev = Math.max(dev, Math.abs(c.raw - 0.5));
+  dev = Math.max(dev, Math.abs(snap.raw - 0.5), Math.min(0.2, Math.max(Math.abs(snap.hi - 0.5), Math.abs(snap.lo - 0.5))));
+  dev = Math.ceil((dev + 0.01) * 50) / 50;
+  const Y = scale(0.5 - dev, 0.5 + dev, m.t + ih, m.t);
+  const step = dev > 0.1 ? 0.05 : dev > 0.05 ? 0.02 : 0.01;
+  let s = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Apuração e projeção">`;
+  s += `<defs><clipPath id="clip"><rect x="${m.l}" y="${m.t}" width="${iw + m.r}" height="${ih}"/></clipPath></defs>`;
+  for (let v = 0.5 - dev; v <= 0.5 + dev + 1e-9; v += step) {
+    const y = Y(v);
+    s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${m.l - 6}" y="${y + 4}" text-anchor="end">${Math.round(v * 100)}%</text>`;
+  }
+  for (const v of [0, 25, 50, 75, 100]) s += `<text x="${X(v)}" y="${h - 8}" text-anchor="middle">${v}%</text>`;
+  s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${m.t + ih}" y2="${m.t + ih}" stroke="var(--axis)"/>`;
+  s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${Y(0.5)}" y2="${Y(0.5)}" stroke="var(--muted)" stroke-dasharray="2 4"/>`;
+  const x0 = X(snap.sections * 100), xe = X(100);
+  // Marcador de "agora" e a região ainda não apurada
+  s += `<rect x="${x0}" y="${m.t}" width="${xe - x0}" height="${ih}" fill="var(--grid)" fill-opacity="0.35"/>`;
+  s += `<line x1="${x0}" x2="${x0}" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink2)"/>`;
+  const late = snap.sections > 0.8;
+  s += `<text x="${late ? x0 - 6 : x0 + 6}" y="${m.t + 14}" text-anchor="${late ? "end" : "start"}">agora · ${pct(snap.sections, 0)}</text>`;
+  if (!late) s += `<text x="${X(100) - 4}" y="${m.t + ih - 6}" text-anchor="end">seções apuradas →</text>`;
+  s += `<g clip-path="url(#clip)">`;
+  const labels = [];
+  for (const key of keys) {
+    const c = CANDIDATES[key], v = cand(snap, key), col = `var(${c.color})`;
+    const pts = curve.map((p) => [X(p.sections * 100), Y(key === "lula" ? p.raw : 1 - p.raw)]);
+    const y0 = Y(v.raw);
+    // a tangente do último trecho apurado mantém a transição suave
+    const prev = pts[Math.max(0, pts.length - 1 - Math.ceil(pts.length * 0.08))];
+    const slope = prev && x0 - prev[0] > 1 ? (y0 - prev[1]) / (x0 - prev[0]) : 0;
+    const dx = xe - x0;
+    // cúbica do ponto atual até o fim: sai na tendência recente e chega na horizontal
+    const c1 = (yEnd) => [x0 + dx * 0.35, Math.min(Math.max(y0 + slope * dx * 0.35, Math.min(y0, yEnd) - 20), Math.max(y0, yEnd) + 20)];
+    const ctl = (yEnd) => { const [cx, cy] = c1(yEnd); return `C${fmt(cx)},${fmt(cy)} ${fmt(x0 + dx * 0.6)},${fmt(yEnd)} ${fmt(xe)},${fmt(yEnd)}`; };
+    const back = (yEnd) => { const [cx, cy] = c1(yEnd); return `C${fmt(x0 + dx * 0.6)},${fmt(yEnd)} ${fmt(cx)},${fmt(cy)} ${fmt(x0)},${fmt(y0)}`; };
+    const yLo = Y(v.lo), yHi = Y(v.hi), yP = Y(v.share);
+    if (dx > 0.5) {
+      s += `<path d="M${fmt(x0)},${fmt(y0)} ${ctl(yHi)} L${fmt(xe)},${fmt(yLo)} ${back(yLo)} Z" fill="${col}" fill-opacity="0.13"/>`;
+      s += `<path d="M${fmt(x0)},${fmt(y0)} ${ctl(yP)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="6 4"/>`;
+      s += `<line x1="${xe}" x2="${xe}" y1="${yHi}" y2="${yLo}" stroke="${col}" stroke-width="2"/>`;
+      s += `<circle cx="${xe}" cy="${yP}" r="4.5" fill="var(--surface)" stroke="${col}" stroke-width="2"/>`;
+    }
+    s += `<path d="${pts.map(([x, y], i) => `${i ? "L" : "M"}${fmt(x)},${fmt(y)}`).join("")}" fill="none" stroke="${col}" stroke-width="2.25"/>`;
+    s += `<circle cx="${x0}" cy="${y0}" r="4" fill="${col}" stroke="var(--surface)" stroke-width="2"/>`;
+    labels.push({ y: yP, name: c.name, val: `${pct(v.share, 1)}`, col });
+  }
+  s += `</g>`;
+  // rótulos finais, afastados se colidirem
+  labels.sort((a, b) => a.y - b.y);
+  if (labels[1].y - labels[0].y < 34) { const mid = (labels[0].y + labels[1].y) / 2; labels[0].y = mid - 17; labels[1].y = mid + 17; }
+  for (const L of labels) {
+    s += `<text class="lab" x="${xe + 10}" y="${L.y - 2}" style="fill:var(--ink)">${L.name}</text>`;
+    s += `<text x="${xe + 10}" y="${L.y + 13}" style="fill:var(--ink2)">${L.val}</text>`;
+  }
+  s += `<line id="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink2)" stroke-dasharray="2 2" visibility="hidden"/>`;
+  s += `</svg>`;
+  box.innerHTML = s;
+
+  const legend = $("legend"); legend.textContent = "";
+  for (const key of keys) { const sp = el("span"); const i = el("i"); i.style.borderTopColor = `var(${CANDIDATES[key].color})`; sp.append(i, document.createTextNode(CANDIDATES[key].name)); legend.append(sp); }
+  for (const [label, cls] of [["Apurado", ""], ["Caminho até a projeção", "dash"], [`Intervalo de ${conf}%`, "box"]]) { const sp = el("span"); const i = el("i", cls); sp.append(i, document.createTextNode(label)); legend.append(sp); }
+
+  hover(box, curve, X, m, w);
+}
+
+function hover(box, curve, X, m, w) {
+  const svg = box.querySelector("svg"), xh = svg.querySelector("#xh");
+  const tip = el("div", "tip"); tip.hidden = true; box.append(tip);
+  svg.addEventListener("pointermove", (e) => {
+    const r = svg.getBoundingClientRect();
+    const px = (e.clientX - r.left) * (w / r.width);
+    const v = X.inv(px) / 100;
+    if (v < 0 || v > curve.at(-1).sections) { tip.hidden = true; xh.setAttribute("visibility", "hidden"); return; }
+    let p = curve[0];
+    for (const c of curve) { if (c.sections > v) break; p = c; }
+    xh.setAttribute("x1", X(p.sections * 100)); xh.setAttribute("x2", X(p.sections * 100)); xh.setAttribute("visibility", "visible");
+    tip.textContent = "";
+    tip.append(el("div", "t", `${pct(p.sections, 1)} apurado · ${clock(p.time)}`));
+    for (const key of ["lula", "bolso"]) {
+      const row = el("div", "r"); const i = el("i"); i.style.borderTopColor = `var(${CANDIDATES[key].color})`;
+      row.append(i, el("b", null, pct(key === "lula" ? p.raw : 1 - p.raw)), el("span", null, CANDIDATES[key].name));
+      tip.append(row);
+    }
+    tip.hidden = false;
+    const left = e.clientX - r.left + 14;
+    tip.style.left = (left + tip.offsetWidth > r.width ? e.clientX - r.left - tip.offsetWidth - 14 : left) + "px";
+    tip.style.top = Math.max(0, e.clientY - r.top - 20) + "px";
+  });
+  svg.addEventListener("pointerleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
+}
+
+// Tabela por UF: apuração, projeção do candidato A com intervalo e quem lidera a projeção
+function renderStates(ufs) {
+  const z = { 0.8: 1.2816, 0.9: 1.6449, 0.95: 1.96, 0.99: 2.5758 }[PROJ.confidence] ?? 1.96;
+  const A = CANDIDATES.lula, B = CANDIDATES.bolso;
+  const rows = ufs.map((u) => ({ uf: u.uf, counted: u.counted, raw: u.raw, share: u.share, ci: u.se * z, lead: u.share >= 0.5 ? 0 : 1 }));
+  const k = ufSort.key;
+  rows.sort((a, b) => (k === "uf" ? a.uf.localeCompare(b.uf) : (a[k] || 0) - (b[k] || 0)) * ufSort.dir);
+  // Sim, a gente sabe: isto é a meia-largura do intervalo de confiança de 95%, não uma "margem
+  // de erro" de pesquisa. O povo entende "margem de erro". Licença poética, e foda-se.
+  const cols = [["uf", "Estado"], ["counted", "Seções apuradas"], ["raw", "Votos apurados"], ["share", "Projeção"], ["ci", "Margem de erro"], ["lead", "Líder projetado"]];
+  const t = $("ufs"); t.textContent = "";
+  const head = t.createTHead().insertRow();
+  for (const [key, label] of cols) {
+    const th = document.createElement("th");
+    th.textContent = label + (ufSort.key === key ? (ufSort.dir > 0 ? " ↑" : " ↓") : "");
+    th.onclick = () => { ufSort = { key, dir: ufSort.key === key ? -ufSort.dir : 1 }; renderStates(ufs); };
+    head.append(th);
+  }
+  const body = t.createTBody();
+  for (const r of rows) {
+    const tr = body.insertRow();
+    tr.insertCell().textContent = r.uf === "ZZ" ? "Exterior" : r.uf;
+    const c = tr.insertCell(); const bar = el("span", "bar"); const bi = el("b"); bi.style.width = (r.counted * 100).toFixed(1) + "%"; bar.append(bi); c.append(bar, document.createTextNode(pct(r.counted, 0)));
+    tr.insertCell().append(splitBar(r.raw, A, B));
+    tr.insertCell().append(splitBar(r.share, A, B));
+    tr.insertCell().textContent = Number.isFinite(r.ci) ? pp(r.ci) + " pp" : "–";
+    const lc = tr.insertCell(); lc.className = "lead";
+    const who = r.lead === 0 ? A : B, dot = el("span", "dot"); dot.style.background = `var(${who.color})`;
+    lc.append(dot, document.createTextNode(Number.isFinite(r.share) ? who.name : "–"));
+  }
+}
+
+// Barra dividida: A (vermelho) a partir da esquerda, B (azul) a partir da direita, marca em 50%
+function splitBar(a, A, B) {
+  if (!Number.isFinite(a)) return document.createTextNode("–");
+  const wrap = el("span", "split");
+  wrap.title = `${A.name} ${pct(a)} · ${B.name} ${pct(1 - a)}`;
+  const track = el("span", "track");
+  const ia = el("i"), ib = el("i");
+  ia.style.width = (a * 100).toFixed(2) + "%"; ia.style.background = `var(${A.color})`;
+  ib.style.width = ((1 - a) * 100).toFixed(2) + "%"; ib.style.background = `var(${B.color})`;
+  track.append(ia, ib);
+  wrap.append(el("span", "pa", pct(a, 1)), track, el("span", "pb", pct(1 - a, 1)));
+  return wrap;
+}
+
+new ResizeObserver(() => view && render()).observe(document.querySelector(".wrap"));
+</script>
+</body>
+</html>

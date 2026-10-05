@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sibila Backtest 2022</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: controles à esquerda; à direita, gráficos alinhados no tempo que compartilham um cursor e um seletor de instante. */
+:root {
+  --bg: #f3f5f2; --surface: #fcfdfb; --ink: #121714; --ink2: #4b544e; --muted: #7f8781;
+  --grid: #e1e5e0; --axis: #c3c9c3; --line: rgba(18, 23, 20, 0.12);
+  --accent: #0b5d4e; --accent-ink: #ffffff;
+  --s1: #2a78d6; --s2: #eb6834;
+  --lv0: #86b6ef; --lv1: #5598e7; --lv2: #2a78d6; --lv3: #1c5cab; --lv4: #104281;
+  --good: #0a7d0a; --bad: #c43535;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1110; --surface: #171b19; --ink: #f2f5f2; --ink2: #c0c7c1; --muted: #8a918b;
+    --grid: #262c29; --axis: #3a423d; --line: rgba(255, 255, 255, 0.10);
+    --accent: #43b39a; --accent-ink: #0e1110;
+    --s1: #3987e5; --s2: #d95926;
+    --lv0: #b7d3f6; --lv1: #86b6ef; --lv2: #5598e7; --lv3: #2a78d6; --lv4: #1c5cab;
+    --good: #2fbf4a; --bad: #e66767;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1110; --surface: #171b19; --ink: #f2f5f2; --ink2: #c0c7c1; --muted: #8a918b;
+  --grid: #262c29; --axis: #3a423d; --line: rgba(255, 255, 255, 0.10);
+  --accent: #43b39a; --accent-ink: #0e1110;
+  --s1: #3987e5; --s2: #d95926;
+  --lv0: #b7d3f6; --lv1: #86b6ef; --lv2: #5598e7; --lv3: #2a78d6; --lv4: #1c5cab;
+  --good: #2fbf4a; --bad: #e66767;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
+.wrap { max-width: 1480px; margin: 0 auto; padding-inline: 20px; padding-block: 20px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 18px; }
+h1 { font: 800 clamp(26px, 3.4vw, 38px)/1 var(--f-display); font-stretch: 78%; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+h1 span { color: var(--muted); font-weight: 600; }
+.sub { color: var(--ink2); max-width: 70ch; margin: 6px 0 0; }
+.status { font: 500 12px var(--f-mono); color: var(--muted); }
+.status.busy { color: var(--accent); }
+.layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* Controles */
+aside { display: flex; flex-direction: column; gap: 14px; position: sticky; top: env(safe-area-inset-top, 0px); max-height: 100vh; overflow-y: auto; padding-bottom: 12px; }
+@media (max-width: 960px) { aside { position: static; max-height: none; order: 2; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { font: 700 13px var(--f-display); font-stretch: 85%; text-transform: uppercase; letter-spacing: 0.08em; margin: 0; color: var(--ink2); }
+.panel p.hint { margin: -4px 0 0; color: var(--muted); font-size: 12px; }
+.field { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+.field label { color: var(--ink2); font-size: 13px; }
+.field output { font: 500 12px var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.field input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--axis); border-radius: 7px; overflow: hidden; }
+.seg button { font: 600 13px var(--f-body); border: 0; padding: 7px 6px; background: transparent; color: var(--ink2); cursor: pointer; }
+.seg button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); }
+.seg button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+table.thr { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.thr th { font: 600 11px var(--f-body); color: var(--muted); text-align: right; padding: 0 0 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+table.thr th:first-child, table.thr td:first-child { text-align: left; }
+table.thr td { padding: 3px 0; color: var(--ink2); }
+table.thr td:not(:first-child) { text-align: right; }
+table.thr input { width: 62px; font: 500 12px var(--f-mono); padding: 4px 6px; border: 1px solid var(--axis); border-radius: 5px; background: var(--bg); color: var(--ink); text-align: right; }
+select { font: 500 13px var(--f-body); padding: 5px 8px; border: 1px solid var(--axis); border-radius: 6px; background: var(--bg); color: var(--ink); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { font: 600 13px var(--f-body); padding: 7px 12px; border-radius: 7px; border: 1px solid var(--axis); background: var(--bg); color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+
+/* Coluna principal */
+main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+@media (max-width: 1200px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi { background: var(--surface); padding: 12px 14px; min-width: 0; }
+.kpi .k { font: 600 11px var(--f-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.kpi .v { font: 700 26px/1.15 var(--f-display); font-stretch: 85%; margin-top: 4px; white-space: nowrap; }
+.kpi .v small { font: 500 13px var(--f-mono); color: var(--ink2); margin-left: 4px; }
+.kpi .d { font-size: 12px; color: var(--ink2); margin-top: 2px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font: 600 11px var(--f-body); padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.good { color: var(--good); } .pill.bad { color: var(--bad); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 10px; min-width: 0; }
+.card-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; margin-bottom: 6px; }
+.card h3 { font: 700 17px var(--f-display); font-stretch: 85%; margin: 0; }
+.card .desc { color: var(--muted); font-size: 12px; margin: 2px 0 0; max-width: 80ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 16px; height: 0; border-top: 2px solid; }
+.legend i.dash { border-top-style: dashed; }
+.legend i.box { height: 10px; border: 0; border-radius: 2px; }
+.chart { position: relative; width: 100%; touch-action: pan-y; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart.stale { opacity: 0.5; transition: opacity 0.2s; }
+svg text { font: 11px var(--f-mono); fill: var(--muted); }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); min-width: 170px; z-index: 5; }
+.tip .t { font: 600 11px var(--f-mono); color: var(--muted); margin-bottom: 4px; }
+.tip .r { display: grid; grid-template-columns: 14px auto 1fr; gap: 6px; align-items: center; }
+.tip .r b { font: 600 12px var(--f-mono); }
+.tip .r span { color: var(--ink2); }
+.tip .r i { width: 12px; border-top: 2px solid; }
+.scrub { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin-top: 4px; }
+.scrub input { width: 100%; accent-color: var(--accent); }
+.scrub label, .scrub output { font: 500 12px var(--f-mono); color: var(--ink2); }
+.duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 1100px) { .duo { grid-template-columns: minmax(0, 1fr); } }
+.tablewrap { overflow-x: auto; }
+table.ufs { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.ufs th { font: 600 11px var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--axis); white-space: nowrap; cursor: pointer; user-select: none; }
+table.ufs th:first-child, table.ufs td:first-child { text-align: left; }
+table.ufs td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--grid); font-family: var(--f-mono); font-size: 12px; white-space: nowrap; }
+table.ufs td:first-child { font: 600 13px var(--f-body); }
+.bar { display: inline-block; vertical-align: middle; width: 60px; height: 6px; background: var(--grid); border-radius: 3px; margin-right: 8px; overflow: hidden; }
+.bar b { display: block; height: 100%; background: var(--s1); border-radius: 3px; }
+.notes { color: var(--ink2); font-size: 13px; max-width: 90ch; }
+.notes p { margin: 6px 0; }
+.err { color: var(--bad); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Sibila <span>· 2022 runoff backtest</span></h1>
+      <p class="sub">Replays the 30 Oct 2022 count section by section, in the real order TSE received them, and projects Lula's final share of valid votes, drilling from Brazil to state, city, zone and polling place as each population fills in.</p>
+    </div>
+    <div class="status" id="status" role="status">Loading 472,028 sections…</div>
+  </header>
+
+  <div class="layout">
+    <aside aria-label="Parameters">
+      <section class="panel">
+        <h2>Projection</h2>
+        <div>
+          <div class="seg" role="group" aria-label="Estimator">
+            <button type="button" id="est-share" aria-pressed="true">Vote share</button>
+            <button type="button" id="est-swing" aria-pressed="false">Swing vs 1st turn</button>
+          </div>
+          <p class="hint" id="est-hint" style="margin-top:6px"></p>
+        </div>
+        <div>
+          <table class="thr" aria-label="Drill-down thresholds">
+            <thead><tr><th>Use population of</th><th>Min % counted</th><th>Min sections</th></tr></thead>
+            <tbody id="thr"></tbody>
+          </table>
+          <p class="hint" style="margin-top:6px">Each uncounted section is projected from the finest level that passes both thresholds; otherwise from Brazil.</p>
+        </div>
+        <div class="field">
+          <label for="biasCorr">Bias correlation ρ</label><output id="biasCorr-o"></output>
+          <input type="range" id="biasCorr" min="0" max="1" step="0.05">
+        </div>
+        <p class="hint">0 treats unobserved deviations as independent; 1 treats everything projected from the same population as sharing one bias.</p>
+        <div class="field">
+          <label for="confidence">Confidence level</label>
+          <select id="confidence"><option value="0.8">80%</option><option value="0.9">90%</option><option value="0.95">95%</option><option value="0.99">99%</option></select>
+        </div>
+        <div class="field">
+          <label for="snapshots">Snapshots</label>
+          <select id="snapshots"><option>120</option><option>240</option><option>480</option></select>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="row">
+          <button type="button" class="btn" id="reset">Reset to defaults</button>
+        </div>
+      </section>
+    </aside>
+
+    <main>
+      <div class="kpis" id="kpis" aria-live="polite"></div>
+
+      <section class="card">
+        <div class="card-h">
+          <div>
+            <h3>Lula's share of valid votes</h3>
+            <p class="desc">Projected final result with its confidence band, against the raw running count. Hover to inspect, click to pin.</p>
+          </div>
+          <div class="seg" role="group" aria-label="Horizontal axis" style="width:220px">
+            <button type="button" id="x-sec" aria-pressed="true">% sections</button>
+            <button type="button" id="x-time" aria-pressed="false">Clock time</button>
+          </div>
+        </div>
+        <div class="legend" id="legend-main"></div>
+        <div class="chart" id="c-main"></div>
+        <div class="scrub">
+          <label for="scrub">Snapshot</label>
+          <input type="range" id="scrub" min="0" max="239" value="60">
+          <output id="scrub-o"></output>
+        </div>
+      </section>
+
+      <div class="duo">
+        <section class="card">
+          <div class="card-h"><div>
+            <h3>Convergence</h3>
+            <p class="desc">Distance to the final result vs half-width of the interval, in percentage points (log scale). The interval is honest while the solid line stays below the dashed one.</p>
+          </div></div>
+          <div class="legend" id="legend-err"></div>
+          <div class="chart" id="c-err"></div>
+        </section>
+        <section class="card">
+          <div class="card-h"><div>
+            <h3>Where projections come from</h3>
+            <p class="desc">Share of not-yet-counted votes projected from each level of the hierarchy.</p>
+          </div></div>
+          <div class="legend" id="legend-lv"></div>
+          <div class="chart" id="c-lv"></div>
+        </section>
+      </div>
+
+      <section class="card">
+        <div class="card-h"><div>
+          <h3 id="uf-title">States at this snapshot</h3>
+          <p class="desc">Same drill-down applied per state. Click a column to sort.</p>
+        </div></div>
+        <div class="tablewrap"><table class="ufs" id="ufs"></table></div>
+      </section>
+
+      <section class="card notes">
+        <h3>How it works</h3>
+        <p><b>Data.</b> TSE open data for the 2022 presidential runoff: votes per section (<code>votacao_secao_2022_BR</code>) and section details (<code>detalhe_votacao_secao_2022</code>), which give each section's registered voters and the time it entered TSE's totals. The replay follows that real order. Each section's 1st-turn votes are known before the runoff and give its expected size.</p>
+        <p><b>Projection.</b> For every polling place with uncounted sections, the engine picks the finest population (polling place, zone, city, state) whose counted share of expected votes and number of counted sections pass the thresholds, falling back to Brazil. Expected votes are 1st-turn votes times that population's turnout ratio. <i>Vote share</i> uses the population's mean share. <i>Swing</i> uses the section's own 1st-turn Lula share plus the population's mean change between turns.</p>
+        <p><b>Interval.</b> Variance adds three parts: section-level noise, the sampling error of each population mean, and the between-group variance of every level the projection skips (a city projected from its state carries the city-around-state variance, and so on). Counting order is not random, so a share ρ of that skipped variance is treated as one shared bias per population.</p>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script type="module">
+import { DEFAULT_PROJ, LEVELS } from "./engine.js";
+
+const $ = (id) => document.getElementById(id);
+const STORE = "sibila-backtest-v1";
+
+let state = load() ?? fresh();
+function fresh() { return { proj: structuredClone(DEFAULT_PROJ), xMode: "sec" }; }
+function load() { try { const s = JSON.parse(localStorage.getItem(STORE)); return s?.proj ? s : null; } catch { return null; } }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
+
+let meta = null, snaps = null, scrubIdx = 60, hoverIdx = null, ufSort = { key: "uf", dir: 1 };
+
+/* ---------- Controles ---------- */
+function buildControls() {
+  const tb = $("thr"); tb.textContent = "";
+  for (let lv = 4; lv >= 1; lv--) {
+    const tr = document.createElement("tr");
+    const td0 = document.createElement("td"); td0.textContent = LEVELS[lv]; tr.append(td0);
+    for (const [k, mul, min, max, step] of [["minFrac", 100, 0, 100, 1], ["minSec", 1, 1, 500, 1]]) {
+      const td = document.createElement("td"), inp = document.createElement("input");
+      Object.assign(inp, { type: "number", min, max, step, id: `${k}-${lv}` });
+      inp.setAttribute("aria-label", `${LEVELS[lv]} ${k === "minFrac" ? "minimum percent counted" : "minimum sections"}`);
+      inp.value = Math.round(state.proj[k][lv] * mul);
+      inp.addEventListener("change", () => { state.proj[k][lv] = Math.max(min, Math.min(max, +inp.value || 0)) / mul; run(); });
+      td.append(inp); tr.append(td);
+    }
+    tb.append(tr);
+  }
+  syncProjControls();
+}
+function syncProjControls() {
+  $("est-share").setAttribute("aria-pressed", state.proj.estimator !== "swing");
+  $("est-swing").setAttribute("aria-pressed", state.proj.estimator === "swing");
+  $("est-hint").textContent = state.proj.estimator === "swing"
+    ? "Section's 1st-turn Lula share + the population's mean swing between turns."
+    : "The population's mean 2nd-turn Lula share, as specified.";
+  $("biasCorr").value = state.proj.biasCorr; $("biasCorr-o").textContent = (+state.proj.biasCorr).toFixed(2);
+  $("confidence").value = String(state.proj.confidence);
+  $("snapshots").value = String(state.proj.snapshots);
+  $("x-sec").setAttribute("aria-pressed", state.xMode === "sec");
+  $("x-time").setAttribute("aria-pressed", state.xMode === "time");
+}
+$("est-share").onclick = () => { state.proj.estimator = "share"; syncProjControls(); run(); };
+$("est-swing").onclick = () => { state.proj.estimator = "swing"; syncProjControls(); run(); };
+$("biasCorr").oninput = (e) => { state.proj.biasCorr = +e.target.value; $("biasCorr-o").textContent = state.proj.biasCorr.toFixed(2); runSoon(); };
+$("confidence").onchange = (e) => { state.proj.confidence = +e.target.value; run(); };
+$("snapshots").onchange = (e) => { const f = scrubIdx / state.proj.snapshots; state.proj.snapshots = +e.target.value; scrubIdx = Math.round(f * state.proj.snapshots); run(); };
+$("x-sec").onclick = () => { state.xMode = "sec"; syncProjControls(); save(); render(); };
+$("x-time").onclick = () => { state.xMode = "time"; syncProjControls(); save(); render(); };
+$("reset").onclick = () => { const x = state.xMode; state = fresh(); state.xMode = x; buildControls(); run(); };
+$("scrub").oninput = (e) => { scrubIdx = +e.target.value; renderAll(); };
+
+/* ---------- Worker ---------- */
+const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
+let reqId = 0, timer = null;
+function runSoon() { clearTimeout(timer); timer = setTimeout(run, 200); }
+function run() {
+  save();
+  const id = ++reqId;
+  setBusy(true);
+  worker.postMessage({ id, kind: "backtest", proj: state.proj });
+}
+worker.onmessage = ({ data }) => {
+  if (data.type === "meta") { meta = data; return; }
+  if (data.id !== reqId) return;
+  if (data.type === "error") { setBusy(false); $("status").innerHTML = ""; const s = document.createElement("span"); s.className = "err"; s.textContent = "Projection failed: " + data.message; $("status").append(s); return; }
+  snaps = data.snaps;
+  scrubIdx = Math.min(scrubIdx, snaps.length - 1);
+  setBusy(false);
+  render();
+};
+worker.onerror = (e) => { $("status").textContent = "Could not start the engine: " + (e.message || "worker error") + ". Serve the app folder over HTTP."; };
+function setBusy(b) {
+  for (const c of document.querySelectorAll(".chart")) c.classList.toggle("stale", b && !!snaps);
+  const st = $("status"); st.classList.toggle("busy", b);
+  st.textContent = b ? "Recomputing…" : snaps ? `${snaps.length} snapshots · CI covers the final result in ${coverage()}% of them` : "";
+}
+function coverage() {
+  let k = 0; for (const s of snaps) if (s.lo <= meta.final && meta.final <= s.hi) k++;
+  return Math.round((100 * k) / snaps.length);
+}
+
+/* ---------- Formatação ---------- */
+const pct = (v, d = 2) => (v * 100).toFixed(d) + "%";
+const pp = (v, d = 2) => (v * 100).toFixed(d);
+const clock = (min) => { const t = 17 * 60 + min; const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`; };
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+/* ---------- Renderização ---------- */
+function render() {
+  if (!snaps || !meta) return;
+  $("scrub").max = snaps.length - 1; $("scrub").value = scrubIdx;
+  renderAll();
+}
+function renderAll() {
+  const i = hoverIdx ?? scrubIdx;
+  renderKpis(i);
+  renderMain(); renderErr(); renderLevels();
+  renderUfs(scrubIdx);
+  const s = snaps[scrubIdx];
+  $("scrub-o").textContent = `${pct(s.sections, 1)} · ${clock(s.time)}`;
+}
+
+function renderKpis(i) {
+  const s = snaps[i], f = meta.final;
+  const inside = s.lo <= f && f <= s.hi;
+  const err = s.share - f;
+  const conf = Math.round(state.proj.confidence * 100);
+  const tiles = [
+    ["Sections counted", pct(s.sections, 1), `${clock(s.time)} on 30 Oct 2022`],
+    ["Raw count", pct(s.raw), `Lula, valid votes counted so far`],
+    ["Projection", pct(s.share), `${conf}% CI ${pct(s.lo)} – ${pct(s.hi)}`],
+    ["Chance Lula wins", s.pWin > 0.999 ? "> 99.9%" : s.pWin < 0.001 ? "< 0.1%" : pct(s.pWin, 1), s.pWin >= 0.5 ? "Projected winner: Lula" : "Projected winner: Bolsonaro"],
+    ["Error vs final", `${err >= 0 ? "+" : "−"}${pp(Math.abs(err))}<small>pp</small>`, null, inside],
+    ["Final result", pct(f), "Lula, 30 Oct 2022"],
+  ];
+  const box = $("kpis"); box.textContent = "";
+  for (const [k, v, d, ok] of tiles) {
+    const el = document.createElement("div"); el.className = "kpi";
+    const kk = document.createElement("div"); kk.className = "k"; kk.textContent = k;
+    const vv = document.createElement("div"); vv.className = "v"; vv.innerHTML = v; // values are numbers built above
+    const dd = document.createElement("div"); dd.className = "d";
+    if (ok !== undefined) {
+      const p = document.createElement("span"); p.className = "pill " + (ok ? "good" : "bad");
+      p.textContent = ok ? "✓ inside interval" : "✕ outside interval";
+      dd.append(p);
+    } else dd.textContent = d;
+    el.append(kk, vv, dd); box.append(el);
+  }
+}
+
+function xOf(s) { return state.xMode === "sec" ? s.sections * 100 : s.time; }
+function xDomain() { return state.xMode === "sec" ? [0, 100] : [0, snaps.at(-1).time]; }
+function xTicks([a, b]) {
+  if (state.xMode === "sec") return [0, 20, 40, 60, 80, 100].map((v) => [v, v + "%"]);
+  const out = []; for (let m = 0; m <= b; m += b > 300 ? 60 : 30) out.push([m, clock(m)]);
+  return out;
+}
+function scale(d0, d1, r0, r1) { const k = (r1 - r0) / (d1 - d0 || 1); const f = (v) => r0 + (v - d0) * k; f.inv = (p) => d0 + (p - r0) / k; return f; }
+
+function frame(el, height) {
+  const w = Math.max(280, el.clientWidth);
+  const m = { l: 46, r: 14, t: 10, b: 26 };
+  return { w, h: height, m, iw: w - m.l - m.r, ih: height - m.t - m.b };
+}
+function svgOpen(f) { return `<svg viewBox="0 0 ${f.w} ${f.h}" width="${f.w}" height="${f.h}" role="img">`; }
+function xAxis(f, X) {
+  let s = "";
+  for (const [v, lab] of xTicks(xDomain())) {
+    const x = X(v);
+    s += `<line x1="${x}" x2="${x}" y1="${f.m.t}" y2="${f.m.t + f.ih}" stroke="var(--grid)"/>`;
+    s += `<text x="${x}" y="${f.h - 8}" text-anchor="middle">${lab}</text>`;
+  }
+  s += `<line x1="${f.m.l}" x2="${f.m.l + f.iw}" y1="${f.m.t + f.ih}" y2="${f.m.t + f.ih}" stroke="var(--axis)"/>`;
+  return s;
+}
+const path = (pts) => pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join("");
+
+function legend(id, items) {
+  const el = $(id); el.textContent = "";
+  for (const [label, color, kind] of items) {
+    const s = document.createElement("span"), i = document.createElement("i");
+    if (kind === "box") { i.className = "box"; i.style.background = color; }
+    else { i.style.borderTopColor = color; if (kind === "dash") i.className = "dash"; }
+    s.append(i, document.createTextNode(label)); el.append(s);
+  }
+}
+
+function renderMain() {
+  const el = $("c-main"), f = frame(el, 360);
+  const X = scale(...xDomain(), f.m.l, f.m.l + f.iw);
+  // Eixo y ajustado às linhas; a faixa inicial, muito larga, é cortada
+  let lo = Math.min(meta.final, 0.5), hi = Math.max(meta.final, 0.5);
+  for (const s of snaps) if (s.sections >= 0.02) { lo = Math.min(lo, s.share, s.raw); hi = Math.max(hi, s.share, s.raw); }
+  lo = Math.max(0.3, Math.floor(lo * 100 - 1) / 100); hi = Math.min(0.7, Math.ceil(hi * 100 + 1) / 100);
+  const Y = scale(lo, hi, f.m.t + f.ih, f.m.t);
+  const span = (hi - lo) * 100, step = span > 12 ? 2 : span > 5 ? 1 : 0.5;
+  let s = svgOpen(f) + `<defs><clipPath id="clip-main"><rect x="${f.m.l}" y="${f.m.t}" width="${f.iw}" height="${f.ih}"/></clipPath></defs>`;
+  for (let v = Math.ceil((lo * 100) / step) * step; v <= hi * 100 + 1e-9; v += step) {
+    const y = Y(v / 100);
+    s += `<line x1="${f.m.l}" x2="${f.m.l + f.iw}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${f.m.l - 6}" y="${y + 4}" text-anchor="end">${v.toFixed(step < 1 ? 1 : 0)}%</text>`;
+  }
+  s += xAxis(f, X);
+  s += `<g clip-path="url(#clip-main)">`;
+  const band = snaps.map((d) => [X(xOf(d)), Y(d.hi)]).concat(snaps.slice().reverse().map((d) => [X(xOf(d)), Y(d.lo)]));
+  s += `<path d="${path(band)}Z" fill="var(--s1)" fill-opacity="0.16"/>`;
+  s += `<line x1="${f.m.l}" x2="${f.m.l + f.iw}" y1="${Y(0.5)}" y2="${Y(0.5)}" stroke="var(--muted)" stroke-dasharray="2 4"/>`;
+  s += `<line x1="${f.m.l}" x2="${f.m.l + f.iw}" y1="${Y(meta.final)}" y2="${Y(meta.final)}" stroke="var(--ink)" stroke-width="1"/>`;
+  s += `<path d="${path(snaps.map((d) => [X(xOf(d)), Y(d.raw)]))}" fill="none" stroke="var(--s2)" stroke-width="1.5"/>`;
+  s += `<path d="${path(snaps.map((d) => [X(xOf(d)), Y(d.share)]))}" fill="none" stroke="var(--s1)" stroke-width="2"/>`;
+  s += `</g>`;
+  s += `<text x="${f.m.l + 6}" y="${Y(meta.final) - 5}" style="fill:var(--ink)">Final ${pct(meta.final)}</text>`;
+  s += `<text x="${f.m.l + f.iw - 4}" y="${Y(0.5) + 13}" text-anchor="end">50% majority</text>`;
+  s += cursor(f, X, (d) => [[Y(d.share), "--s1"], [Y(d.raw), "--s2"]]);
+  s += `</svg>`;
+  el.innerHTML = s;
+  const conf = Math.round(state.proj.confidence * 100);
+  legend("legend-main", [["Projection", "var(--s1)"], [`${conf}% interval`, "color-mix(in srgb, var(--s1) 30%, transparent)", "box"], ["Raw count", "var(--s2)"], ["Final result", "var(--ink)"]]);
+  hover(el, f, X, (d) => [
+    ["--s1", pct(d.share), "Projection"],
+    ["--s1", `${pct(d.lo)} – ${pct(d.hi)}`, "Interval"],
+    ["--s2", pct(d.raw), "Raw count"],
+  ]);
+}
+
+function renderErr() {
+  const el = $("c-err"), f = frame(el, 240);
+  const X = scale(...xDomain(), f.m.l, f.m.l + f.iw);
+  const L0 = Math.log10(0.001), L1 = Math.log10(30);
+  const Yl = scale(L0, L1, f.m.t + f.ih, f.m.t), Y = (v) => Yl(Math.log10(Math.max(0.001, Math.min(30, v))));
+  let s = svgOpen(f);
+  for (const v of [0.001, 0.01, 0.1, 1, 10]) {
+    const y = Y(v);
+    s += `<line x1="${f.m.l}" x2="${f.m.l + f.iw}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${f.m.l - 6}" y="${y + 4}" text-anchor="end">${v}</text>`;
+  }
+  s += xAxis(f, X);
+  s += `<path d="${path(snaps.map((d) => [X(xOf(d)), Y((d.hi - d.share) * 100)]))}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-dasharray="6 3"/>`;
+  s += `<path d="${path(snaps.map((d) => [X(xOf(d)), Y(Math.abs(d.share - meta.final) * 100)]))}" fill="none" stroke="var(--ink)" stroke-width="1.5"/>`;
+  s += `<path d="${path(snaps.map((d) => [X(xOf(d)), Y(Math.abs(d.raw - meta.final) * 100)]))}" fill="none" stroke="var(--s2)" stroke-width="1.5"/>`;
+  s += cursor(f, X, (d) => [[Y(Math.abs(d.share - meta.final) * 100), "--ink"], [Y((d.hi - d.share) * 100), "--s1"]]);
+  s += `</svg>`;
+  el.innerHTML = s;
+  legend("legend-err", [["|Projection − final|", "var(--ink)"], ["Interval half-width", "var(--s1)", "dash"], ["|Raw count − final|", "var(--s2)"]]);
+  hover(el, f, X, (d) => [
+    ["--ink", pp(Math.abs(d.share - meta.final), 3) + " pp", "Projection error"],
+    ["--s1", pp(d.hi - d.share, 3) + " pp", "Half-width"],
+    ["--s2", pp(Math.abs(d.raw - meta.final), 3) + " pp", "Raw count error"],
+  ]);
+}
+
+function renderLevels() {
+  const el = $("c-lv"), f = frame(el, 240);
+  const X = scale(...xDomain(), f.m.l, f.m.l + f.iw);
+  const Y = scale(0, 1, f.m.t + f.ih, f.m.t);
+  let s = svgOpen(f);
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+    const y = Y(v);
+    s += `<line x1="${f.m.l}" x2="${f.m.l + f.iw}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${f.m.l - 6}" y="${y + 4}" text-anchor="end">${v * 100}%</text>`;
+  }
+  s += xAxis(f, X);
+  const base = snaps.map(() => 0);
+  for (let lv = 0; lv < 5; lv++) {
+    const top = snaps.map((d, i) => base[i] + d.levelMix[lv]);
+    const pts = snaps.map((d, i) => [X(xOf(d)), Y(top[i])]).concat(snaps.map((d, i) => [X(xOf(d)), Y(base[i])]).reverse());
+    s += `<path d="${path(pts)}Z" fill="var(--lv${lv})" stroke="var(--surface)" stroke-width="1"/>`;
+    top.forEach((v, i) => (base[i] = v));
+  }
+  s += cursor(f, X, () => []);
+  s += `</svg>`;
+  el.innerHTML = s;
+  legend("legend-lv", LEVELS.map((n, lv) => [n, `var(--lv${lv})`, "box"]));
+  hover(el, f, X, (d) => LEVELS.map((n, lv) => [`--lv${lv}`, pct(d.levelMix[lv], 0), n]).reverse());
+}
+
+// Cursor do instante fixado ou sob o mouse
+function cursor(f, X, dots) {
+  const i = hoverIdx ?? scrubIdx, d = snaps[i];
+  const x = X(xOf(d));
+  let s = `<line x1="${x}" x2="${x}" y1="${f.m.t}" y2="${f.m.t + f.ih}" stroke="var(--ink2)" stroke-width="1"/>`;
+  for (const [y, c] of dots(d)) if (y >= f.m.t && y <= f.m.t + f.ih) s += `<circle cx="${x}" cy="${y}" r="4" fill="var(${c})" stroke="var(--surface)" stroke-width="2"/>`;
+  return s;
+}
+function nearest(X, px) {
+  const v = X.inv(px);
+  let best = 0, bd = Infinity;
+  for (let i = 0; i < snaps.length; i++) { const dd = Math.abs(xOf(snaps[i]) - v); if (dd < bd) { bd = dd; best = i; } }
+  return best;
+}
+function hover(el, f, X, rows) {
+  const svg = el.querySelector("svg");
+  const tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true; el.append(tip);
+  const toPx = (e) => { const r = svg.getBoundingClientRect(); return [(e.clientX - r.left) * (f.w / r.width), e.clientY - r.top, r]; };
+  svg.addEventListener("pointermove", (e) => {
+    const [px] = toPx(e);
+    const i = nearest(X, px);
+    if (i !== hoverIdx) { hoverIdx = i; renderAll(); }
+    const box = document.querySelector(`#${el.id} .tip`);
+    fillTip(box, snaps[i], rows);
+    const r = svg.getBoundingClientRect();
+    const left = e.clientX - r.left + 14, w = box.offsetWidth;
+    box.style.left = (left + w > r.width ? e.clientX - r.left - w - 14 : left) + "px";
+    box.style.top = Math.max(0, e.clientY - r.top - 20) + "px";
+  });
+  svg.addEventListener("pointerleave", () => { hoverIdx = null; renderAll(); });
+  svg.addEventListener("click", (e) => { scrubIdx = nearest(X, toPx(e)[0]); $("scrub").value = scrubIdx; hoverIdx = null; renderAll(); });
+  if (hoverIdx !== null && el.matches(":hover")) { fillTip(tip, snaps[hoverIdx], rows); tip.hidden = false; }
+}
+function fillTip(box, d, rows) {
+  box.hidden = false; box.textContent = "";
+  const t = document.createElement("div"); t.className = "t"; t.textContent = `${pct(d.sections, 1)} counted · ${clock(d.time)}`; box.append(t);
+  for (const [c, v, n] of rows(d)) {
+    const r = document.createElement("div"); r.className = "r";
+    const i = document.createElement("i"); i.style.borderTopColor = `var(${c})`;
+    const b = document.createElement("b"); b.textContent = v;
+    const sp = document.createElement("span"); sp.textContent = n;
+    r.append(i, b, sp); box.append(r);
+  }
+}
+
+function renderUfs(i) {
+  const s = snaps[i], conf = Math.round(state.proj.confidence * 100);
+  $("uf-title").textContent = `States at ${pct(s.sections, 1)} counted (${clock(s.time)})`;
+  const rows = s.ufs.map((u, k) => {
+    const [l, b] = meta.ufFinal[k], fin = l / (l + b);
+    const ci = u.se * zOf();
+    return { uf: meta.ufNames[k], counted: u.counted, raw: u.raw, share: u.share, ci, final: fin, err: u.share - fin, ok: Math.abs(u.share - fin) <= ci };
+  });
+  const k = ufSort.key;
+  rows.sort((a, b) => (typeof a[k] === "string" ? a[k].localeCompare(b[k]) : (a[k] || 0) - (b[k] || 0)) * ufSort.dir);
+  const cols = [["uf", "State"], ["counted", "Counted"], ["raw", "Raw count"], ["share", "Projection"], ["ci", `± ${conf}%`], ["final", "Final"], ["err", "Error"], ["ok", "Interval"]];
+  const t = $("ufs"); t.textContent = "";
+  const thead = t.createTHead().insertRow();
+  for (const [key, label] of cols) {
+    const th = document.createElement("th"); th.textContent = label + (ufSort.key === key ? (ufSort.dir > 0 ? " ↑" : " ↓") : "");
+    th.onclick = () => { ufSort = { key, dir: ufSort.key === key ? -ufSort.dir : 1 }; renderUfs(scrubIdx); };
+    thead.append(th);
+  }
+  const tb = t.createTBody();
+  for (const r of rows) {
+    const tr = tb.insertRow();
+    tr.insertCell().textContent = r.uf;
+    const c = tr.insertCell(); const bar = document.createElement("span"); bar.className = "bar"; const bi = document.createElement("b"); bi.style.width = (r.counted * 100).toFixed(1) + "%"; bar.append(bi); c.append(bar, document.createTextNode(pct(r.counted, 0)));
+    tr.insertCell().textContent = isNaN(r.raw) ? "–" : pct(r.raw);
+    tr.insertCell().textContent = pct(r.share);
+    tr.insertCell().textContent = pp(r.ci) + " pp";
+    tr.insertCell().textContent = pct(r.final);
+    tr.insertCell().textContent = (r.err >= 0 ? "+" : "−") + pp(Math.abs(r.err)) + " pp";
+    const p = document.createElement("span"); p.className = "pill " + (r.ok ? "good" : "bad"); p.textContent = r.ok ? "✓ inside" : "✕ outside";
+    tr.insertCell().append(p);
+  }
+}
+function zOf() { return { 0.8: 1.2816, 0.9: 1.6449, 0.95: 1.96, 0.99: 2.5758 }[state.proj.confidence] ?? 1.96; }
+
+new ResizeObserver(() => snaps && renderAll()).observe(document.querySelector("main"));
+buildControls();
+run();
+</script>
+</body>
+</html>

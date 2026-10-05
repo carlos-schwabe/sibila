@@ -1,0 +1,6 @@
+.DS_Store
+__pycache__/
+# Downloads brutos do TSE (ver README)
+/data/
+# Saída do coletor ao vivo
+/app/live/
