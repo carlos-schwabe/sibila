@@ -6,3 +6,5 @@ __pycache__/
 /app/live/
 # Foto original do autor (a versão reduzida está em app/img/)
 /dev.png
+# Base do 1º turno de 2026 (publicada como release no GitHub; ver README)
+/app/data-2026/
