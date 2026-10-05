@@ -1,5 +1,7 @@
 # Sibila
 
+![Sibila: acompanhamento e projeção do 2º turno](docs/capa.jpg)
+
 Acompanhamento e projeção ao vivo do 2º turno presidencial a partir da apuração parcial do TSE.
 
 A apuração parcial é uma amostra viesada: regiões menos desenvolvidas demoram mais para apurar. A Sibila projeta cada seção ainda não apurada a partir do seu próprio resultado no 1º turno e da variação entre turnos das seções já apuradas perto dela, e mostra o resultado final com intervalo de confiança e a situação da disputa: indefinida, provável vencedor ou eleito.
