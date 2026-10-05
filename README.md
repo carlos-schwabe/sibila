@@ -140,7 +140,7 @@ Passos:
 2. Adicione um volume ao serviço (por exemplo em `/data`). O coletor grava ali o histórico da noite e retoma de onde parou se o serviço reiniciar; sem volume, um reinício perde a curva.
 3. Disponibilize a base do 1º turno de 2026: publique `app/data-2026/sections.bin` e `meta.json` em algum endereço (por exemplo como arquivos de um release do GitHub) e defina `BASELINE_URL`, ou deixe `app/data-2026/` no repositório. Sem base de 2026, o serviço usa a de 2022 e avisa no log.
 4. Gere um domínio público para o serviço e confira `/healthz`: `tse.ok` deve ser `true`.
-5. Antes da eleição, coloque o Cloudflare na frente: com o cache de 5 s dos JSON, recarregamentos em massa são respondidos pela CDN.
+5. Ative o CDN do Railway (`railway cdn enable` e `railway cdn update --purge-on-deploy all`). Ele respeita o cache de 5 s dos JSON, responde recarregamentos em massa a partir do ponto de presença mais próximo do leitor (São Paulo, para quem está no Brasil) e o que sai do cache não conta como tráfego do serviço.
 
 Variáveis de ambiente, todas opcionais:
 
