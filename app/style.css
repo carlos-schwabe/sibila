@@ -146,6 +146,8 @@ table.ufs td.lead { text-align: left; }
 .credit { display: flex; align-items: center; gap: 14px; padding-block: 24px 40px; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: 15px; }
 .credit img { width: 48px; height: 60px; object-fit: cover; border-radius: 10px; flex: none; }
 .credit strong { color: var(--ink); }
+.credit a.repo { display: inline; width: auto; height: auto; margin: 0; border-radius: 0; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.credit a.repo:hover { color: var(--ink); background: none; }
 .credit a { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: var(--ink); margin-left: -6px; }
 .credit a:hover { background: var(--paper); }
 .credit a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

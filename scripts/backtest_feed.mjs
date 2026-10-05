@@ -5,15 +5,27 @@
 //   zona     todas as zonas que mudaram, no limite de `rps` requisições por segundo
 //   hibrido  até `zonas` arquivos por ciclo, das zonas com mais seções ainda não cobertas
 // Uso: node scripts/backtest_feed.mjs '{"modo":"hibrido","ciclo":10,"zonas":300}'
+// Outras eleições e variâncias a priori: '{"data":"data/2018/base-full","prior":"2014"}'
+// (prior: "2014", "2018", "2022" ou um objeto { sec, tau })
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { loadData, realOrder, projectFeed, callStatus, DEFAULT_PROJ } from "../app/engine.js";
 
-const root = new URL("../app/data/", import.meta.url);
+// Variância a priori do swing por nível, estimada por scripts/estimate_prior.mjs em cada eleição
+const PRIORS = {
+  2014: { sec: 0.000836, tau: [0, 0.00306, 0.00219, 0.000488, 0.000561] },
+  2018: { sec: 0.00102, tau: [0, 0.00345, 0.00175, 0.000165, 0.000475] },
+  2022: DEFAULT_PROJ.prior,
+};
+
+const O = { modo: "hibrido", ciclo: 10, zonas: 300, rps: 50, avaliar: 60, ...JSON.parse(process.argv[2] ?? "{}") };
+const root = O.data ? pathToFileURL(resolve(O.data) + "/") : new URL("../app/data/", import.meta.url);
 const buf = readFileSync(new URL("sections.bin", root));
 const D = loadData(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), JSON.parse(readFileSync(new URL("meta.json", root), "utf8")));
 const { order } = realOrder(D);
-const O = { modo: "hibrido", ciclo: 10, zonas: 300, rps: 50, avaliar: 60, ...JSON.parse(process.argv[2] ?? "{}") };
-const P = { ...DEFAULT_PROJ };
+const P = { ...DEFAULT_PROJ, ...(O.biasCorr != null ? { biasCorr: O.biasCorr } : {}), prior: typeof O.prior === "object" ? O.prior : PRIORS[O.prior ?? "2022"] };
+const winner = D.final >= 0.5 ? "lula" : "bolso"; // "lula" = candidato A (13), "bolso" = candidato B
 
 // Seções de cada zona na ordem de chegada
 const nz = D.nG[3], nu = D.nG[1];
@@ -54,7 +66,9 @@ for (let t = 0; t <= end + O.ciclo; ) {
     snaps.push(projectFeed(D, P, counted, { ufVotes, zoneVotes: O.modo === "uf" ? null : zoneVotes, covered }, t / 60));
     nextEval = t + O.avaliar;
   }
-  t += dur;
+  // sem seção nova por um tempo (algumas são totalizadas dias depois), pula até a próxima
+  const nextArrival = next < D.N ? D.arrival[order[next]] : Infinity;
+  t = Math.max(t + dur, Number.isFinite(nextArrival) && nextArrival > t + dur + O.avaliar ? nextArrival - O.ciclo : t + dur);
 }
 
 const pct = (v) => (v * 100).toFixed(2) + "%";
@@ -64,10 +78,10 @@ const final = D.final;
 const evalSnaps = snaps.filter((s) => s.sections < 0.999);
 const inside = evalSnaps.filter((s) => s.lo <= final && final <= s.hi).length;
 const first = snaps.find((s) => callStatus(s).stage !== "open");
-const wrong = snaps.filter((s) => callStatus(s).stage !== "open" && callStatus(s).winner !== "lula").length;
+const wrong = snaps.filter((s) => callStatus(s).stage !== "open" && callStatus(s).winner !== winner).length;
 const at = (f) => snaps.find((s) => s.sections >= f);
-console.log(`modo=${O.modo} ciclo=${O.ciclo}s${O.modo === "hibrido" ? ` zonas=${O.zonas}` : ""}  ciclo mais longo ${maxCycle.toFixed(0)}s  média ${(requests / end).toFixed(1)} req/s`);
-console.log(`  cobertura ${((100 * inside) / evalSnaps.length).toFixed(0)}% de ${evalSnaps.length} (até 99,9%)  |  1ª definição ${first ? `${pct(first.sections)} (${clock(first.time)})` : "—"}  |  erradas ${wrong}`);
+console.log(`${O.data ?? "app/data"} prior=${O.prior ?? "2022"} ρ=${P.biasCorr} final=${pct(final)} vencedor=${winner === "lula" ? "A (13)" : "B"}  modo=${O.modo} ciclo=${O.ciclo}s${O.modo === "hibrido" ? ` zonas=${O.zonas}` : ""}  ciclo mais longo ${maxCycle.toFixed(0)}s  média ${(requests / D.arrival[order[Math.floor(D.N * 0.999)]]).toFixed(1)} req/s`);
+console.log(`  cobertura ${((100 * inside) / evalSnaps.length).toFixed(0)}% de ${evalSnaps.length} (até 99,9%)  |  1ª definição ${first ? `${pct(first.sections)} (${clock(first.time)}, ${callStatus(first).winner === winner ? "certa" : "ERRADA"})` : "—"}  |  erradas ${wrong}`);
 console.log("  " + [0.1, 0.25, 0.5, 0.75].map((f) => { const s = at(f); return `${f * 100}%: ${((s.share - final) * 100).toFixed(2)} ± ${((s.hi - s.share) * 100).toFixed(2)}`; }).join("  |  "));
 if (O.diag) {
   const miss = snaps.filter((s) => !(s.lo <= final && final <= s.hi));

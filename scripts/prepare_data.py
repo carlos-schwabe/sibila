@@ -54,7 +54,7 @@ def main() -> None:
     DET_SQL = "select null uf, null::int muni, null::int zona, null::int secao, null::int aptos, null::int sec where false" if A.sem_detalhe else f"""
             -- cada seção aparece duas vezes, com linhas idênticas
             select distinct SG_UF uf, CD_MUNICIPIO::int muni, NR_ZONA::int zona, NR_SECAO::int secao, QT_APTOS::int aptos,
-                   epoch(strptime(DT_PRIM_TOT_PARCIAL_HOR_TSE, '%d/%m/%Y %H:%M:%S') - timestamp '{A.data_2t} 17:00:00')::int sec
+                   epoch(try_strptime(DT_PRIM_TOT_PARCIAL_HOR_TSE, '%d/%m/%Y %H:%M:%S') - timestamp '{A.data_2t} 17:00:00')::int sec
             from read_csv('{DETAIL}', delim=';', header=true, encoding='latin-1', all_varchar=true, union_by_name=true)
             where NR_TURNO = '2' and CD_CARGO = '1'"""
     rows = con.execute(f"""
@@ -68,7 +68,7 @@ def main() -> None:
         )
         select t2.uf, t2.muni, t2.muni_name, t2.zona, t2.lv, t2.secao,
                coalesce(t1.total, 0), coalesce(t1.lula, 0), coalesce(t2.lula, 0), coalesce(t2.bolso, 0),
-               coalesce(det.aptos, 0), coalesce(det.sec, 0)
+               coalesce(det.aptos, 0), det.sec
         from t2 left join t1 using (uf, muni, zona, secao) {"left join" if A.sem_detalhe else "join"} det using (uf, muni, zona, secao)
         order by t2.uf, t2.muni, t2.zona, t2.lv, t2.secao
     """).fetchall()
@@ -77,6 +77,9 @@ def main() -> None:
     uf_idx, muni_idx, zone_idx, local_idx = {}, {}, {}, {}
     sec_local, arrival, t1tot, t1lula, lula, bolso, aptos, secnr = [], [], [], [], [], [], [], []
     zone_nr = []
+    # Seções sem horário de totalização entram um minuto depois da última com horário
+    last_sec = max((r[-1] for r in rows if r[-1] is not None), default=0)
+    rows = [r[:-1] + (r[-1] if r[-1] is not None else last_sec + 60,) for r in rows]
     for uf, muni, muni_name, zona, local, secao, tt, tl, l, b, ap, sec in rows:
         if uf not in uf_idx:
             uf_idx[uf] = len(ufs)
