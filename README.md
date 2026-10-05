@@ -6,11 +6,12 @@ Acompanhamento e projeção ao vivo do 2º turno presidencial a partir da apura�
 
 A apuração parcial é uma amostra viesada: regiões menos desenvolvidas demoram mais para apurar. A Sibila projeta cada seção ainda não apurada a partir do seu próprio resultado no 1º turno e da variação entre turnos das seções já apuradas perto dela, e mostra o resultado final com intervalo de confiança e a situação da disputa: indefinida, provável vencedor ou eleito.
 
-## Páginas
+## Links
 
-- `/`: acompanhamento ao vivo, com o que o coletor grava durante a apuração. Antes da eleição, mostra a espera e se a API do TSE está respondendo.
-- `/demo/`: reproduz o 2º turno de 2022 na ordem real de apuração, com um controle que define até onde a apuração chegou.
-- `/backtest.html`: o backtest de 2022 com todos os parâmetros ajustáveis.
+- **Ao vivo:** https://sibila-production.up.railway.app — acompanhamento do 2º turno de 25/10/2026. Antes da apuração, mostra a espera e se a API do TSE está respondendo.
+- **Demonstração:** https://sibila-production.up.railway.app/demo/ — reproduz o 2º turno de 2022 na ordem real de apuração, com um controle que define até onde a apuração chegou.
+- **Backtest:** https://sibila-production.up.railway.app/backtest.html — o backtest de 2022 com todos os parâmetros ajustáveis.
+- **Base do 1º turno de 2026:** [release `base-2026-1t`](https://github.com/carlos-schwabe/sibila/releases/tag/base-2026-1t) — resultado por seção lido dos boletins de urna (`sections.bin` e `meta.json`).
 
 ## Como rodar
 
