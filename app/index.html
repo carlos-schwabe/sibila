@@ -3,118 +3,151 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sibila ao vivo</title>
+<title>2º turno ao vivo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&display=swap">
 <style>
-/* Layout: uma coluna. Primeiro os cartões de situação, depois a apuração com o ponto de chegada projetado. */
+/* Layout: o topo é um duelo simétrico (Lula à esquerda, o adversário à direita, 50% no
+   centro); abaixo, seções alinhadas à esquerda e sem caixas: a evolução da noite e os estados.
+   Vocabulário da urna eletrônica: números dos candidatos como teclas, verde CONFIRMA para eleito. */
 :root {
-  --bg: #f3f5f2; --surface: #fcfdfb; --ink: #121714; --ink2: #4b544e; --muted: #7f8781;
-  --grid: #e1e5e0; --axis: #c3c9c3; --line: rgba(18, 23, 20, 0.12);
-  --accent: #0b5d4e; --accent-ink: #ffffff;
-  --c-a: #d23c3b; --c-b: #2a78d6;
-  --open: #7f8781; --likely: #b07400; --decided: #0a7d0a;
-  --dev-bg: #1f2622; --dev-ink: #e9efe9;
-  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
-  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0e1110; --surface: #171b19; --ink: #f2f5f2; --ink2: #c0c7c1; --muted: #8a918b;
-    --grid: #262c29; --axis: #3a423d; --line: rgba(255, 255, 255, 0.10);
-    --accent: #43b39a; --accent-ink: #0e1110;
-    --c-a: #e66767; --c-b: #3987e5;
-    --open: #8a918b; --likely: #fab219; --decided: #2fbf4a;
-    --dev-bg: #27302b; --dev-ink: #e9efe9;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0e1110; --surface: #171b19; --ink: #f2f5f2; --ink2: #c0c7c1; --muted: #8a918b;
-  --grid: #262c29; --axis: #3a423d; --line: rgba(255, 255, 255, 0.10);
-  --accent: #43b39a; --accent-ink: #0e1110;
-  --c-a: #e66767; --c-b: #3987e5;
-  --open: #8a918b; --likely: #fab219; --decided: #2fbf4a;
-  --dev-bg: #27302b; --dev-ink: #e9efe9;
-  color-scheme: dark;
+  --ground: #edf0f4;    /* papel frio */
+  --paper: #ffffff;
+  --ink: #1a2033;       /* tinta azul-marinho */
+  --ink-2: #4a5168;
+  --ink-3: #7b8196;
+  --rule: #d8dce5;
+  --a: #d3263a;         /* Lula */
+  --a-soft: #f7d6da;
+  --b: #1d5fd1;         /* adversário */
+  --b-soft: #d4e1f8;
+  --confirma: #138a4b;  /* tecla CONFIRMA da urna */
+  --key: #1f2229;       /* teclas da urna */
+  --key-ink: #ffffff;
+  --f-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --f-text: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light; /* só tema claro, mesmo com o sistema no escuro */
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
-.dev { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--dev-bg); color: var(--dev-ink); padding-inline: 20px; padding-block: 10px; }
-.dev-in { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
-.dev b { font: 600 11px var(--f-mono); letter-spacing: 0.08em; background: var(--likely); color: #1b1300; padding: 3px 7px; border-radius: 4px; }
-.dev input { width: 100%; accent-color: var(--likely); }
-.dev output { font: 500 13px var(--f-mono); min-width: 13ch; text-align: right; }
-.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 22px 48px; display: flex; flex-direction: column; gap: 18px; }
-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 24px; }
-h1 { font: 800 clamp(26px, 3.6vw, 40px)/1 var(--f-display); font-stretch: 78%; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
-h1 span { color: var(--muted); font-weight: 600; }
-.updated { font: 500 12px var(--f-mono); color: var(--muted); }
-.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-@media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .cards { grid-template-columns: minmax(0, 1fr); } }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.card .k { font: 600 11px var(--f-body); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
-.cand .who { display: flex; align-items: center; gap: 10px; }
-.cand .sw { width: 6px; align-self: stretch; border-radius: 3px; }
-.cand .name { font: 800 22px/1.05 var(--f-display); font-stretch: 85%; }
-.cand .meta { font-size: 12px; color: var(--muted); }
-.big { font: 700 38px/1 var(--f-display); font-stretch: 82%; font-variant-numeric: tabular-nums; }
-.big small { font: 500 13px var(--f-mono); color: var(--ink2); margin-left: 6px; }
-.sub { font-size: 12px; color: var(--ink2); }
-.proj { border-top: 1px solid var(--grid); padding-top: 10px; display: flex; flex-direction: column; gap: 4px; }
-.proj .v { font: 600 17px var(--f-mono); font-variant-numeric: tabular-nums; }
-.proj .v.dim { color: var(--muted); }
-.stage { display: inline-flex; align-items: center; gap: 6px; font: 600 11px var(--f-body); padding: 3px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; width: fit-content; }
-.stage.open { color: var(--open); } .stage.likely { color: var(--likely); } .stage.decided { color: var(--decided); }
-.winner .headline { font: 800 30px/1.05 var(--f-display); font-stretch: 80%; }
-.winner .prob { font: 600 15px var(--f-mono); }
-.winner.decided { border-color: var(--decided); box-shadow: inset 0 0 0 1px var(--decided); }
-.meter { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
-.meter b { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
-.chartcard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 8px; min-width: 0; }
-.chartcard h2 { font: 700 18px var(--f-display); font-stretch: 85%; margin: 0; }
-.chartcard p { margin: 2px 0 8px; color: var(--muted); font-size: 12px; max-width: 80ch; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--ink2); margin-bottom: 4px; }
-.legend span { display: inline-flex; align-items: center; gap: 6px; }
-.legend i { display: inline-block; width: 18px; border-top: 2px solid var(--ink2); }
+body { background: var(--ground); color: var(--ink); font: 16px/1.5 var(--f-text); transition: background-color 0.6s ease; }
+/* Resultado matematicamente definido: o fundo fica num tom claro da cor do eleito */
+body.won-a { --ground: color-mix(in srgb, var(--a) 45%, #ffffff); }
+body.won-b { --ground: color-mix(in srgb, var(--b) 45%, #ffffff); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Barra DEV */
+.dev { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--key); color: var(--key-ink); padding-inline: 20px; padding-block: 8px; }
+.dev-in { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; font-size: 14px; }
+.dev b { font-weight: 700; color: #ffcf4a; }
+.dev input { width: 100%; accent-color: #ffcf4a; }
+.dev output { min-width: 12ch; text-align: right; font-variant-numeric: tabular-nums; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-block: 18px 0; }
+.brand { display: flex; align-items: center; gap: 12px; font: 400 clamp(17px, 2.2vw, 21px)/1.2 var(--f-display); font-stretch: 88%; color: var(--ink-2); }
+.brand b { font-weight: 800; color: var(--ink); }
+.brand img { width: 44px; height: auto; aspect-ratio: 10 / 7; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); flex: none; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.live.on i { background: var(--a); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+
+/* Herói: o duelo */
+.hero { background: var(--paper); border-radius: 20px; margin-block: 16px 40px; padding: clamp(20px, 4vw, 44px); }
+.verdict { text-align: center; margin: 0 auto clamp(20px, 3vw, 32px); }
+.verdict h1 { font: 800 clamp(34px, 6vw, 64px)/1 var(--f-display); font-stretch: 80%; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+.verdict p { margin: 12px auto 0; max-width: 52ch; color: var(--ink-2); font-size: clamp(15px, 1.8vw, 18px); text-wrap: balance; }
+.verdict .confirma { display: inline-block; vertical-align: middle; margin-left: 10px; background: var(--confirma); color: #fff; font: 700 13px/1 var(--f-text); letter-spacing: 0.02em; padding: 7px 10px 6px; border-radius: 6px; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25); }
+
+.duel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: end; }
+.side { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.side.b { align-items: flex-end; text-align: right; }
+.photo { width: clamp(64px, 9vw, 88px); height: auto; aspect-ratio: 1; border-radius: 50%; object-fit: cover; margin-bottom: 8px; box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--cand, var(--rule)); }
+.side.a .photo { --cand: var(--a); } .side.b .photo { --cand: var(--b); }
+.who { display: flex; align-items: center; gap: 10px; }
+.side.b .who { flex-direction: row-reverse; }
+.keys { display: inline-flex; gap: 3px; }
+.keys kbd { font: 700 15px/1 var(--f-text); width: 24px; height: 28px; display: inline-grid; place-items: center; background: var(--key); color: var(--key-ink); border-radius: 5px; box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.12); }
+.name { font: 700 clamp(18px, 2.4vw, 24px)/1.1 var(--f-display); font-stretch: 90%; }
+.share { font: 800 clamp(48px, 9vw, 104px)/0.9 var(--f-display); font-stretch: 78%; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin-top: 8px; }
+.side.a .share { color: var(--a); } .side.b .share { color: var(--b); }
+.counted { color: var(--ink-2); font-size: 15px; }
+
+/* Cabos de guerra: apuração (grossa) e projeção (fina) na mesma escala de 0 a 100% */
+.tug { margin-top: 22px; display: grid; gap: 12px; }
+.tug-row { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px; align-items: center; }
+.tug-row .lab { font-size: 14px; color: var(--ink-2); }
+.tug .track { position: relative; }
+.tug .bar { display: flex; overflow: hidden; background: var(--rule); }
+.tug .big .bar { height: 26px; border-radius: 13px; }
+.tug .small .bar { height: 14px; border-radius: 7px; }
+.tug .bar i { display: block; height: 100%; }
+.tug .bar i.a { background: var(--a); } .tug .bar i.b { background: var(--b); margin-left: auto; }
+.tug .ci { position: absolute; top: -3px; bottom: -3px; background: var(--paper); border-radius: 4px; box-shadow: 0 0 0 1.5px var(--ink); }
+.tug .mid { position: absolute; left: 50%; top: -7px; bottom: -7px; width: 2px; margin-left: -1px; background: var(--ink); }
+.verdict .proj-line { display: block; font: 700 clamp(20px, 2.6vw, 26px)/1.2 var(--f-display); font-stretch: 88%; color: var(--ink); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+
+.progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; align-items: center; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--rule); }
+.progress .meter { height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; grid-column: 1 / -1; }
+.progress .meter b { display: block; height: 100%; background: var(--confirma); border-radius: 3px; }
+.progress .big { font: 700 22px/1 var(--f-display); font-stretch: 85%; font-variant-numeric: tabular-nums; }
+.progress .meta { color: var(--ink-2); font-size: 14px; text-align: right; }
+
+/* Seções abaixo do herói */
+section.block { margin-block: 0 48px; }
+section.block h2 { font: 700 clamp(22px, 3vw, 28px)/1.15 var(--f-display); font-stretch: 85%; margin: 0 0 4px; }
+section.block > p { margin: 0 0 16px; color: var(--ink-2); max-width: 68ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; color: var(--ink-2); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { display: inline-block; width: 20px; border-top: 2.5px solid var(--ink-2); }
 .legend i.dash { border-top-style: dashed; }
-.legend i.box { height: 10px; border: 0; border-radius: 2px; background: color-mix(in srgb, var(--ink2) 22%, transparent); }
+.legend i.box { height: 11px; border: 0; border-radius: 3px; background: color-mix(in srgb, var(--ink-2) 22%, transparent); }
 .chart { position: relative; width: 100%; }
 .chart svg { display: block; width: 100%; overflow: visible; }
-svg text { font: 11px var(--f-mono); fill: var(--muted); }
-svg text.lab { font: 600 12px var(--f-body); }
-.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); z-index: 5; min-width: 150px; }
-.tip .t { font: 600 11px var(--f-mono); color: var(--muted); margin-bottom: 4px; }
-.tip .r { display: grid; grid-template-columns: 14px auto 1fr; gap: 6px; align-items: center; }
-.tip .r b { font: 600 12px var(--f-mono); } .tip .r span { color: var(--ink2); }
-.tip .r i { width: 12px; border-top: 2px solid; }
-.tablecard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
-.tablecard h2 { font: 700 18px var(--f-display); font-stretch: 85%; margin: 0 0 8px; }
-.tablewrap { overflow-x: auto; }
-table.ufs { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
-table.ufs th { font: 600 11px var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--axis); white-space: nowrap; cursor: pointer; user-select: none; }
+.chart text { font: 13px var(--f-text); fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.chart text.lab { font: 700 14px var(--f-display); fill: var(--ink); }
+.tip { position: absolute; pointer-events: none; background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 8px 12px; font-size: 14px; box-shadow: 0 8px 24px rgba(26, 32, 51, 0.12); z-index: 5; min-width: 170px; }
+.tip .t { color: var(--ink-3); margin-bottom: 4px; }
+.tip .r { display: grid; grid-template-columns: 14px auto 1fr; gap: 8px; align-items: center; }
+.tip .r b { font-variant-numeric: tabular-nums; } .tip .r span { color: var(--ink-2); }
+.tip .r i { width: 12px; border-top: 2.5px solid; }
+
+.panel { background: var(--paper); border-radius: 16px; padding: clamp(16px, 2.5vw, 28px); }
+.panel .legend { margin-bottom: 14px; }
+.tablewrap { overflow-x: auto; background: var(--paper); border-radius: 16px; padding: 8px 16px; }
+table.ufs { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+table.ufs th { font-weight: 700; font-size: 14px; color: var(--ink-2); text-align: right; padding: 10px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; cursor: pointer; user-select: none; }
 table.ufs th:first-child, table.ufs td:first-child { text-align: left; }
-table.ufs td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--grid); font-family: var(--f-mono); font-size: 12px; white-space: nowrap; }
-table.ufs td:first-child { font: 600 13px var(--f-body); }
-table.ufs td.lead { text-align: left; font-family: var(--f-body); }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-.bar { display: inline-block; vertical-align: middle; width: 56px; height: 6px; background: var(--grid); border-radius: 3px; margin-right: 8px; overflow: hidden; }
-.bar b { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
-.split { display: inline-flex; align-items: center; gap: 6px; }
-.split .pa { color: var(--c-a); min-width: 6ch; text-align: right; }
-.split .pb { color: var(--c-b); min-width: 6ch; text-align: left; }
-.split .track { position: relative; display: flex; width: 120px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--grid); }
+table.ufs th:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+table.ufs td { padding: 9px 8px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+table.ufs tr:last-child td { border-bottom: 0; }
+table.ufs td:first-child { font-weight: 700; }
+table.ufs td.lead { text-align: left; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+.mini { display: inline-block; vertical-align: middle; width: 56px; height: 6px; background: var(--rule); border-radius: 3px; margin-right: 8px; overflow: hidden; }
+.mini b { display: block; height: 100%; background: var(--confirma); border-radius: 3px; }
+.split { display: inline-flex; align-items: center; gap: 8px; }
+.split .pa { color: var(--a); min-width: 5.5ch; text-align: right; }
+.split .pb { color: var(--b); min-width: 5.5ch; text-align: left; }
+.split .track { position: relative; display: flex; width: 120px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--rule); }
 .split .track i { display: block; height: 100%; }
 .split .track i + i { margin-left: auto; }
-.split .track::after { content: ""; position: absolute; left: 50%; top: -1px; bottom: -1px; width: 2px; margin-left: -1px; background: var(--surface); }
-.note { color: var(--muted); font-size: 12px; max-width: 90ch; }
-.note a { color: var(--ink2); }
-.err { color: var(--c-a); font-weight: 600; }
-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.split .track::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--paper); }
+
+.note { color: var(--ink-3); font-size: 14px; max-width: 72ch; margin: 0 0 48px; }
+.err { color: var(--a); font-weight: 700; }
+
+@media (max-width: 640px) {
+  .duel { gap: 8px; }
+  .tug-row { grid-template-columns: 64px minmax(0, 1fr); gap: 8px; }
+  .progress { grid-template-columns: minmax(0, 1fr); }
+  .progress .meta { text-align: left; font-size: 13px; }
+  .top { align-items: flex-start; }
+  .split .track { width: 64px; }
+}
+@media (prefers-reduced-motion: reduce) { .live.on i { animation: none; } body { transition: none; } }
 </style>
 </head>
 <body>
@@ -125,23 +158,32 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <output id="progress-o"></output>
   </div>
 </div>
+
 <div class="wrap">
-  <header>
-    <h1>Sibila <span>· 2º turno presidencial, projeção ao vivo</span></h1>
-    <div class="updated" id="updated" role="status">Carregando…</div>
-  </header>
+  <div class="top">
+    <div class="brand"><img src="img/brasil.webp" alt="Bandeira do Brasil" width="44" height="31"><span><b>2º turno</b> – Acompanhamento e Projeção</span></div>
+    <div class="live" id="live" role="status"><i></i><span id="updated">Carregando…</span></div>
+  </div>
 
-  <div class="cards" id="cards" aria-live="polite"></div>
-
-  <section class="chartcard">
-    <h2>Votos válidos</h2>
-    <p>As linhas contínuas são a apuração oficial. As tracejadas levam ao resultado final projetado de cada candidato, e a faixa sombreada mostra o intervalo de confiança de <span id="conf-l">95%</span>.</p>
-    <div class="legend" id="legend"></div>
-    <div class="chart" id="chart"></div>
+  <section class="hero" id="hero" aria-live="polite">
+    <div class="verdict"><h1 id="headline">Carregando a apuração</h1><p id="subline"></p></div>
+    <div class="duel" id="duel"></div>
+    <div class="tug" id="tug"></div>
+    <div class="progress" id="prog"></div>
   </section>
 
-  <section class="tablecard">
+  <section class="block">
+    <h2>A noite até agora</h2>
+    <p>As linhas contínuas são a apuração oficial. As tracejadas levam ao resultado final projetado, e a faixa mostra o intervalo de confiança de <span id="conf-l">95%</span>.</p>
+    <div class="panel">
+      <div class="legend" id="legend"></div>
+      <div class="chart" id="chart"></div>
+    </div>
+  </section>
+
+  <section class="block">
     <h2>Estados</h2>
+    <p>Resultado apurado e projetado em cada estado. Clique no nome de uma coluna para ordenar.</p>
     <div class="tablewrap"><table class="ufs" id="ufs"></table></div>
   </section>
 
@@ -157,11 +199,11 @@ const DEV = location.hash !== "#live";
 addEventListener("hashchange", () => location.reload());
 // "lula" e "bolso" são os candidatos A (13) e B (22) do motor
 const CANDIDATES = DEV ? {
-  lula: { name: "Lula", full: "Luiz Inácio Lula da Silva", tag: "13 · PT", color: "--c-a" },
-  bolso: { name: "Bolsonaro", full: "Jair Messias Bolsonaro", tag: "22 · PL", color: "--c-b" },
+  lula: { name: "Lula", number: "13", party: "PT", color: "--a", photo: "img/lula.jpg" },
+  bolso: { name: "Bolsonaro", number: "22", party: "PL", color: "--b", photo: "img/flavio-bolsonaro.jpg" },
 } : {
-  lula: { name: "Lula", full: "Luiz Inácio Lula da Silva", tag: "13 · PT", color: "--c-a" },
-  bolso: { name: "Flávio Bolsonaro", full: "Flávio Nantes Bolsonaro", tag: "22 · PL", color: "--c-b" },
+  lula: { name: "Lula", number: "13", party: "PT", color: "--a", photo: "img/lula.jpg" },
+  bolso: { name: "Flávio Bolsonaro", number: "22", party: "PL", color: "--b", photo: "img/flavio-bolsonaro.jpg" },
 };
 const CERTAINTY = 0.999;
 const PROJ = { ...DEFAULT_PROJ };
@@ -169,12 +211,13 @@ const ELECTION = DEV ? "30/10/2022" : "25/10/2026";
 const LIVE_REFRESH = 15000; // ms entre leituras do histórico ao vivo
 
 const $ = (id) => document.getElementById(id);
-const pct = (v, d = 2) => (v * 100).toFixed(d).replace(".", ",") + "%";
-const pp = (v, d = 2) => (v * 100).toFixed(d).replace(".", ",");
+const pct = (v, d = 1) => (v * 100).toFixed(d).replace(".", ",") + "%";
+const pp = (v, d = 1) => (v * 100).toFixed(d).replace(".", ",");
 const num = (v) => Math.round(v).toLocaleString("pt-BR");
 const clock = (min) => { const t = 17 * 60 + min; return `${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(Math.floor(t % 60)).padStart(2, "0")}`; };
 const conf = Math.round(PROJ.confidence * 100);
 $("conf-l").textContent = conf + "%";
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 let N = 0, view = null, ufNames = [], ufSort = { key: "uf", dir: 1 };
 
@@ -189,18 +232,19 @@ function request() {
 if (DEV) worker.onmessage = ({ data }) => {
   if (data.type === "meta") { N = data.N; ufNames = data.ufNames; return; }
   pending = false;
-  if (data.type === "error") { $("updated").innerHTML = ""; const e = document.createElement("span"); e.className = "err"; e.textContent = "Falha na projeção: " + data.message; $("updated").append(e); return; }
+  if (data.type === "error") { showError("Falha na projeção: " + data.message); return; }
   view = { curve: data.curve, snap: data.snap, ufs: data.snap.ufs.map((u, i) => ({ ...u, uf: ufNames[i], counted: u.sections })), updated: null };
   render();
   if (queued) { queued = false; request(); }
 };
-if (DEV) worker.onerror = (e) => { $("updated").textContent = "Não foi possível iniciar o motor: " + (e.message || "erro no worker") + ". Sirva a pasta app por HTTP."; };
+if (DEV) worker.onerror = (e) => showError("Não foi possível iniciar o motor: " + (e.message || "erro no worker") + ". Sirva a pasta app por HTTP.");
+function showError(msg) { const u = $("updated"); u.textContent = ""; u.append(el("span", "err", msg)); }
 
 /* ---------- Barra de progresso (DEV) ---------- */
 function progress() { return Math.max(0.001, +$("progress").value / 1000); }
 if (DEV) {
   $("dev").hidden = false;
-  const show = () => { $("progress-o").textContent = `${pct(progress(), 1)} das seções`; };
+  const show = () => { $("progress-o").textContent = `${pct(progress())} das seções`; };
   show();
   $("progress").addEventListener("input", () => { show(); request(); });
   request();
@@ -210,7 +254,7 @@ if (DEV) {
 async function loadLive() {
   try {
     const [history, latest] = await Promise.all(["live/history.json", "live/latest.json"].map((f) => fetch(f, { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`${f}: HTTP ${r.status}`); return r.json(); })));
-    if (!history.length) { $("updated").textContent = "Aguardando os primeiros resultados…"; return; }
+    if (!history.length) { $("updated").textContent = "Aguardando os primeiros resultados"; return; }
     N = latest.nSections;
     const p = latest.point;
     view = {
@@ -221,7 +265,7 @@ async function loadLive() {
     };
     render();
   } catch (e) {
-    $("updated").textContent = `Não foi possível carregar os resultados ao vivo (${e.message}).`;
+    showError(`Não foi possível carregar os resultados ao vivo (${e.message}).`);
   }
 }
 if (!DEV) { loadLive(); setInterval(loadLive, LIVE_REFRESH); }
@@ -230,12 +274,12 @@ if (!DEV) { loadLive(); setInterval(loadLive, LIVE_REFRESH); }
 function render() {
   const { snap, curve } = view;
   const st = callStatus(snap, CERTAINTY);
-  const upd = view.updated ? ` · atualizado às ${new Date(view.updated).toLocaleTimeString("pt-BR")}` : "";
-  $("updated").textContent = `${pct(snap.sections, 1)} das seções apuradas · ${clock(snap.time)}${DEV ? ` · reprodução de ${ELECTION}` : upd}`;
-  renderCards(snap, st);
-  renderChart(snap, curve, st);
+  $("live").classList.toggle("on", !DEV && snap.sections < 1);
+  $("updated").textContent = DEV ? `Reprodução de ${ELECTION}` : `Atualizado às ${new Date(view.updated).toLocaleTimeString("pt-BR")}`;
+  renderHero(snap, st);
+  renderChart(snap, curve);
   renderStates(view.ufs);
-  $("note").textContent = `Projeção: cada seção ainda não apurada é estimada pelo seu resultado no 1º turno somado à variação entre turnos da ${DEV ? "área mais específica com seções apuradas suficientes (local de votação, zona, município, estado ou Brasil)" : "seções já apuradas do mesmo estado"}. "Provável vencedor" exige ${pct(CERTAINTY, 1)} de probabilidade. "Eleito" significa que a vantagem supera o número de eleitores aptos que ainda faltam apurar.`;
+  $("note").textContent = `Como lemos a apuração: cada seção ainda não apurada é estimada pelo seu resultado no 1º turno somado à variação entre turnos das seções já apuradas ${DEV ? "da área mais próxima com dados suficientes (local de votação, zona, município ou estado)" : "da zona, do município ou do estado"}. Apontamos um vencedor provável quando a projeção dá ${pct(CERTAINTY)} de chance a um candidato. Eleito significa que a vantagem já supera o número de eleitores que ainda faltam apurar. A margem de erro é a do intervalo de confiança de ${conf}%.`;
 }
 
 // Visão de um instante por candidato (% dos votos válidos)
@@ -250,73 +294,100 @@ function cand(snap, key) {
     pWin: a ? snap.pWin : 1 - snap.pWin,
   };
 }
-const STAGE_TEXT = { open: "○ Indefinido", likely: "◐ Provável vencedor", decided: "✓ Eleito" };
+const chance = (p) => (p > 0.99999 ? "mais de 99,999%" : pct(p, p > 0.999 ? 3 : 1));
 
-function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function renderHero(snap, st) {
+  const lead = CANDIDATES[st.winner], lv = cand(snap, st.winner);
+  document.body.classList.toggle("won-a", st.stage === "decided" && st.winner === "lula");
+  document.body.classList.toggle("won-b", st.stage === "decided" && st.winner === "bolso");
+  const projText = `${pct(lv.share)} ± ${pp(lv.hi - lv.share)} na projeção`;
+  const nameEl = () => { const n = el("span", "cand-name", lead.name); n.style.color = `var(${lead.color})`; return n; };
+  // Veredito, com a projeção do líder logo abaixo
+  const h1 = $("headline"), sub = $("subline");
+  h1.textContent = "";
+  sub.textContent = "";
+  if (st.stage === "decided") {
+    h1.append(nameEl(), document.createTextNode(" está eleito"), el("span", "confirma", "Confirmado"));
+    sub.append(el("strong", "proj-line", projText), el("span", null, `A vantagem de ${num(Math.abs(snap.lulaVotes - snap.bolsoVotes))} votos já supera os ${num(snap.aptosLeft)} eleitores que ainda faltam apurar.`));
+  } else if (st.stage === "likely") {
+    h1.append(nameEl(), document.createTextNode(" deve vencer"));
+    sub.append(el("strong", "proj-line", projText), el("span", null, `${chance(lv.pWin)} de chance de vitória.`));
+  } else {
+    h1.textContent = "Disputa indefinida";
+    const line = el("strong", "proj-line");
+    line.append(nameEl(), document.createTextNode(`: ${projText}`));
+    sub.append(line, el("span", null, `${chance(lv.pWin)} de chance. Para apontar um vencedor, exigimos ${pct(CERTAINTY)}.`));
+  }
 
-function renderCards(snap, st) {
-  const box = $("cards"); box.textContent = "";
+  // Duelo: os números grandes são a apuração
+  const duel = $("duel"); duel.textContent = "";
   for (const key of ["lula", "bolso"]) {
     const c = CANDIDATES[key], v = cand(snap, key);
-    const card = el("article", "card cand");
-    const k = el("div", "k"); k.append(el("span", null, "Candidato"), el("span", null, c.tag));
-    const who = el("div", "who"); const sw = el("span", "sw"); sw.style.background = `var(${c.color})`;
-    const nm = el("div"); nm.append(el("div", "name", c.name), el("div", "meta", c.full));
-    who.append(sw, nm);
-    const big = el("div", "big"); big.append(document.createTextNode(pct(v.raw))); big.append(el("small", null, "apurado"));
-    const sub = el("div", "sub", `${num(v.votes)} votos`);
-    const proj = el("div", "proj");
-    proj.append(el("div", "k", "Projeção final"));
-    const pv = el("div", "v" + (st.stage === "open" ? " dim" : ""), `${pct(v.share)} ± ${pp(v.hi - v.share)}`);
-    proj.append(pv);
-    let stage = "open";
-    if (st.winner === key && st.stage !== "open") stage = st.stage;
-    else if (st.stage !== "open") stage = null;
-    if (stage) proj.append(el("span", "stage " + stage, STAGE_TEXT[stage]));
-    else proj.append(el("span", "sub", `${pct(v.pWin, 2)} de chance de vencer`));
-    card.append(k, who, big, sub, proj);
-    box.append(card);
+    const side = el("div", `side ${key === "lula" ? "a" : "b"}`);
+    const who = el("div", "who");
+    const keys = el("span", "keys"); keys.setAttribute("aria-label", `número ${c.number}`);
+    for (const d of c.number) keys.append(el("kbd", null, d));
+    who.append(keys, el("span", "name", c.name));
+    const photo = el("img", "photo"); photo.src = c.photo; photo.alt = c.name; photo.width = 88; photo.height = 88;
+    side.append(photo, who, el("div", "share", pct(v.raw, 2)), el("div", "counted", `${num(v.votes)} votos`));
+    duel.append(side);
   }
 
-  // Cartão do vencedor
-  const w = el("article", "card winner " + st.stage);
-  w.append(el("div", "k", "Vencedor projetado"));
-  const lead = CANDIDATES[st.winner], lv = cand(snap, st.winner);
-  if (st.stage === "open") {
-    w.append(el("div", "headline", "Indefinido"));
-    w.append(el("div", "prob", `${lead.name} ${pct(lv.pWin, 1)}`));
-    w.append(el("div", "sub", `Disputa ainda indefinida. É preciso ${pct(CERTAINTY, 1)} para apontar o vencedor.`));
-  } else if (st.stage === "likely") {
-    w.append(el("div", "headline", lead.name));
-    w.append(el("div", "prob", lv.pWin > 0.99999 ? "> 99,999%" : pct(lv.pWin, 3)));
-    w.append(el("div", "sub", "Probabilidade de vitória, segundo a projeção."));
-  } else {
-    w.append(el("div", "headline", `${lead.name} eleito`));
-    const margin = Math.abs(snap.lulaVotes - snap.bolsoVotes);
-    w.append(el("div", "prob", "Matematicamente definido"));
-    w.append(el("div", "sub", `A vantagem de ${num(margin)} votos supera os ${num(snap.aptosLeft)} eleitores aptos que ainda faltam apurar.`));
-  }
-  w.append(el("span", "stage " + st.stage, STAGE_TEXT[st.stage]));
-  box.append(w);
+  // Dois cabos de guerra na mesma escala: a apuração e, abaixo, a projeção com a margem de erro
+  const tug = $("tug"); tug.textContent = "";
+  tug.append(tugRow("Apuração", snap.raw, null, "big"));
+  tug.append(tugRow("Projeção", snap.share, [snap.lo, snap.hi], "small"));
 
-  // Cartão de andamento da apuração
-  const p = el("article", "card");
-  p.append(el("div", "k", "Apuração"));
-  const big = el("div", "big"); big.append(document.createTextNode(pct(snap.sections, 1))); big.append(el("small", null, "das seções"));
-  const meter = el("div", "meter"); const mb = el("b"); mb.style.width = (snap.sections * 100).toFixed(2) + "%"; meter.append(mb);
-  p.append(big, meter,
-    el("div", "sub", `${num(snap.done)} de ${num(N)} seções · ${num(snap.lulaVotes + snap.bolsoVotes)} votos válidos`),
-    el("div", "sub", `Última atualização às ${clock(snap.time)}${DEV ? ` (${ELECTION})` : ""}`));
-  box.append(p);
+  // Andamento
+  const prog = $("prog"); prog.textContent = "";
+  const meter = el("div", "meter"), mb = el("b"); mb.style.width = (snap.sections * 100).toFixed(2) + "%"; meter.append(mb);
+  const big = el("div", "big", `${pct(snap.sections)} das seções apuradas`);
+  const meta = el("div", "meta", `${num(snap.done)} de ${num(N)} seções, ${num(snap.lulaVotes + snap.bolsoVotes)} votos válidos. Última seção às ${clock(snap.time)}.`);
+  prog.append(meter, big, meta);
+}
+
+// Uma barra dividida: vermelho até `a` (fração de Lula), azul no resto, linha de 50% no meio.
+// Com `ci`, uma faixa branca sobre a divisa mostra a margem de erro.
+function tugRow(label, a, ci, size) {
+  const row = el("div", `tug-row ${size}`);
+  const track = el("div", "track");
+  const bar = el("div", "bar");
+  const ia = el("i", "a"), ib = el("i", "b");
+  ia.style.width = (a * 100).toFixed(3) + "%"; ib.style.width = ((1 - a) * 100).toFixed(3) + "%";
+  bar.append(ia, ib);
+  track.append(bar);
+  if (ci) {
+    const band = el("span", "ci");
+    const lo = Math.max(0, ci[0]), hi = Math.min(1, ci[1]);
+    band.style.left = (lo * 100).toFixed(3) + "%";
+    band.style.width = `max(3px, ${((hi - lo) * 100).toFixed(3)}%)`;
+    band.title = `Margem de erro: ${pct(ci[0])} a ${pct(ci[1])}`;
+    track.append(band);
+  }
+  track.append(el("span", "mid"));
+  row.append(el("span", "lab", label), track);
+  return row;
 }
 
 function scale(d0, d1, r0, r1) { const k = (r1 - r0) / (d1 - d0 || 1); const f = (v) => r0 + (v - d0) * k; f.inv = (p) => d0 + (p - r0) / k; return f; }
 const fmt = (n) => n.toFixed(1);
 
-function renderChart(snap, curve, st) {
+// Inclinação estável do fim da curva: mínimos quadrados sobre os últimos 20 pontos percentuais
+// de seções apuradas, amortecida e limitada, para que o ruído da apuração não dobre o caminho.
+function trendSlope(curve, key) {
+  const end = curve.at(-1).sections, from = Math.max(0, end - 0.2);
+  const pts = curve.filter((p) => p.sections >= from).map((p) => [p.sections, key === "lula" ? p.raw : 1 - p.raw]);
+  if (pts.length < 5 || end - from < 0.02) return 0;
+  const mx = pts.reduce((a, p) => a + p[0], 0) / pts.length, my = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+  let sxy = 0, sxx = 0;
+  for (const [x, y] of pts) { sxy += (x - mx) * (y - my); sxx += (x - mx) ** 2; }
+  return Math.max(-0.2, Math.min(0.2, 0.5 * (sxx > 0 ? sxy / sxx : 0))); // fração de voto por fração de seções
+}
+
+function renderChart(snap, curve) {
   const box = $("chart");
-  const w = Math.max(300, box.clientWidth), h = w < 600 ? 300 : 400;
-  const m = { l: 44, r: w < 600 ? 92 : 132, t: 12, b: 28 };
+  const w = Math.max(300, box.clientWidth), h = w < 600 ? 300 : 380;
+  const m = { l: 44, r: w < 600 ? 104 : 150, t: 14, b: 30 };
   const iw = w - m.l - m.r, ih = h - m.t - m.b;
   const X = scale(0, 100, m.l, m.l + iw);
   const keys = ["lula", "bolso"];
@@ -327,82 +398,79 @@ function renderChart(snap, curve, st) {
   dev = Math.ceil((dev + 0.01) * 50) / 50;
   const Y = scale(0.5 - dev, 0.5 + dev, m.t + ih, m.t);
   const step = dev > 0.1 ? 0.05 : dev > 0.05 ? 0.02 : 0.01;
-  let s = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Apuração e projeção">`;
+  let s = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Apuração e projeção ao longo da noite">`;
   s += `<defs><clipPath id="clip"><rect x="${m.l}" y="${m.t}" width="${iw + m.r}" height="${ih}"/></clipPath></defs>`;
   for (let v = 0.5 - dev; v <= 0.5 + dev + 1e-9; v += step) {
     const y = Y(v);
-    s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${m.l - 6}" y="${y + 4}" text-anchor="end">${Math.round(v * 100)}%</text>`;
+    s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y}" y2="${y}" stroke="var(--rule)"/><text x="${m.l - 8}" y="${y + 4}" text-anchor="end">${Math.round(v * 100)}%</text>`;
   }
   for (const v of [0, 25, 50, 75, 100]) s += `<text x="${X(v)}" y="${h - 8}" text-anchor="middle">${v}%</text>`;
-  s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${m.t + ih}" y2="${m.t + ih}" stroke="var(--axis)"/>`;
-  s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${Y(0.5)}" y2="${Y(0.5)}" stroke="var(--muted)" stroke-dasharray="2 4"/>`;
+  s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${Y(0.5)}" y2="${Y(0.5)}" stroke="var(--ink-3)" stroke-dasharray="2 4"/>`;
   const x0 = X(snap.sections * 100), xe = X(100);
   // Marcador de "agora" e a região ainda não apurada
-  s += `<rect x="${x0}" y="${m.t}" width="${xe - x0}" height="${ih}" fill="var(--grid)" fill-opacity="0.35"/>`;
-  s += `<line x1="${x0}" x2="${x0}" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink2)"/>`;
+  s += `<rect x="${x0}" y="${m.t}" width="${xe - x0}" height="${ih}" fill="var(--rule)" fill-opacity="0.35"/>`;
+  s += `<line x1="${x0}" x2="${x0}" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink-2)"/>`;
   const late = snap.sections > 0.8;
-  s += `<text x="${late ? x0 - 6 : x0 + 6}" y="${m.t + 14}" text-anchor="${late ? "end" : "start"}">agora · ${pct(snap.sections, 0)}</text>`;
-  if (!late) s += `<text x="${X(100) - 4}" y="${m.t + ih - 6}" text-anchor="end">seções apuradas →</text>`;
+  s += `<text x="${late ? x0 - 8 : x0 + 8}" y="${m.t + 16}" text-anchor="${late ? "end" : "start"}">agora, ${pct(snap.sections, 0)} apurado</text>`;
+  if (!late) s += `<text x="${X(100) - 6}" y="${m.t + ih - 8}" text-anchor="end">seções apuradas</text>`;
   s += `<g clip-path="url(#clip)">`;
   const labels = [];
   for (const key of keys) {
     const c = CANDIDATES[key], v = cand(snap, key), col = `var(${c.color})`;
     const pts = curve.map((p) => [X(p.sections * 100), Y(key === "lula" ? p.raw : 1 - p.raw)]);
     const y0 = Y(v.raw);
-    // a tangente do último trecho apurado mantém a transição suave
-    const prev = pts[Math.max(0, pts.length - 1 - Math.ceil(pts.length * 0.08))];
-    const slope = prev && x0 - prev[0] > 1 ? (y0 - prev[1]) / (x0 - prev[0]) : 0;
     const dx = xe - x0;
+    // inclinação em px por px: (pixels por ponto de voto) / (pixels por ponto de seções); y cresce para baixo
+    const slopePx = -trendSlope(curve, key) * (Y(0) - Y(0.01)) / (X(1) - X(0));
     // cúbica do ponto atual até o fim: sai na tendência recente e chega na horizontal
-    const c1 = (yEnd) => [x0 + dx * 0.35, Math.min(Math.max(y0 + slope * dx * 0.35, Math.min(y0, yEnd) - 20), Math.max(y0, yEnd) + 20)];
+    const c1 = (yEnd) => [x0 + dx * 0.35, Math.min(Math.max(y0 + slopePx * dx * 0.35, Math.min(y0, yEnd) - 16), Math.max(y0, yEnd) + 16)];
     const ctl = (yEnd) => { const [cx, cy] = c1(yEnd); return `C${fmt(cx)},${fmt(cy)} ${fmt(x0 + dx * 0.6)},${fmt(yEnd)} ${fmt(xe)},${fmt(yEnd)}`; };
     const back = (yEnd) => { const [cx, cy] = c1(yEnd); return `C${fmt(x0 + dx * 0.6)},${fmt(yEnd)} ${fmt(cx)},${fmt(cy)} ${fmt(x0)},${fmt(y0)}`; };
     const yLo = Y(v.lo), yHi = Y(v.hi), yP = Y(v.share);
     if (dx > 0.5) {
       s += `<path d="M${fmt(x0)},${fmt(y0)} ${ctl(yHi)} L${fmt(xe)},${fmt(yLo)} ${back(yLo)} Z" fill="${col}" fill-opacity="0.13"/>`;
-      s += `<path d="M${fmt(x0)},${fmt(y0)} ${ctl(yP)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="6 4"/>`;
+      s += `<path d="M${fmt(x0)},${fmt(y0)} ${ctl(yP)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="6 5"/>`;
       s += `<line x1="${xe}" x2="${xe}" y1="${yHi}" y2="${yLo}" stroke="${col}" stroke-width="2"/>`;
-      s += `<circle cx="${xe}" cy="${yP}" r="4.5" fill="var(--surface)" stroke="${col}" stroke-width="2"/>`;
+      s += `<circle cx="${xe}" cy="${yP}" r="5" fill="var(--paper)" stroke="${col}" stroke-width="2.5"/>`;
     }
-    s += `<path d="${pts.map(([x, y], i) => `${i ? "L" : "M"}${fmt(x)},${fmt(y)}`).join("")}" fill="none" stroke="${col}" stroke-width="2.25"/>`;
-    s += `<circle cx="${x0}" cy="${y0}" r="4" fill="${col}" stroke="var(--surface)" stroke-width="2"/>`;
-    labels.push({ y: yP, name: c.name, val: `${pct(v.share, 1)}`, col });
+    s += `<path d="${pts.map(([x, y], i) => `${i ? "L" : "M"}${fmt(x)},${fmt(y)}`).join("")}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    s += `<circle cx="${x0}" cy="${y0}" r="4.5" fill="${col}" stroke="var(--paper)" stroke-width="2"/>`;
+    labels.push({ y: yP, name: c.name, val: `${pct(v.share)} projetado` });
   }
   s += `</g>`;
   // rótulos finais, afastados se colidirem
   labels.sort((a, b) => a.y - b.y);
-  if (labels[1].y - labels[0].y < 34) { const mid = (labels[0].y + labels[1].y) / 2; labels[0].y = mid - 17; labels[1].y = mid + 17; }
+  if (labels[1].y - labels[0].y < 38) { const mid = (labels[0].y + labels[1].y) / 2; labels[0].y = mid - 19; labels[1].y = mid + 19; }
   for (const L of labels) {
-    s += `<text class="lab" x="${xe + 10}" y="${L.y - 2}" style="fill:var(--ink)">${L.name}</text>`;
-    s += `<text x="${xe + 10}" y="${L.y + 13}" style="fill:var(--ink2)">${L.val}</text>`;
+    s += `<text class="lab" x="${xe + 12}" y="${L.y - 2}">${L.name}</text>`;
+    s += `<text x="${xe + 12}" y="${L.y + 14}">${L.val}</text>`;
   }
-  s += `<line id="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink2)" stroke-dasharray="2 2" visibility="hidden"/>`;
+  s += `<line id="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink-2)" stroke-dasharray="2 2" visibility="hidden"/>`;
   s += `</svg>`;
   box.innerHTML = s;
 
   const legend = $("legend"); legend.textContent = "";
   for (const key of keys) { const sp = el("span"); const i = el("i"); i.style.borderTopColor = `var(${CANDIDATES[key].color})`; sp.append(i, document.createTextNode(CANDIDATES[key].name)); legend.append(sp); }
-  for (const [label, cls] of [["Apurado", ""], ["Caminho até a projeção", "dash"], [`Intervalo de ${conf}%`, "box"]]) { const sp = el("span"); const i = el("i", cls); sp.append(i, document.createTextNode(label)); legend.append(sp); }
+  for (const [label, cls] of [["Caminho até a projeção", "dash"], [`Intervalo de ${conf}%`, "box"]]) { const sp = el("span"); const i = el("i", cls); sp.append(i, document.createTextNode(label)); legend.append(sp); }
 
-  hover(box, curve, X, m, w);
+  hover(box, curve, X, w);
 }
 
-function hover(box, curve, X, m, w) {
+function hover(box, curve, X, w) {
   const svg = box.querySelector("svg"), xh = svg.querySelector("#xh");
   const tip = el("div", "tip"); tip.hidden = true; box.append(tip);
   svg.addEventListener("pointermove", (e) => {
     const r = svg.getBoundingClientRect();
-    const px = (e.clientX - r.left) * (w / r.width);
-    const v = X.inv(px) / 100;
+    const v = X.inv((e.clientX - r.left) * (w / r.width)) / 100;
     if (v < 0 || v > curve.at(-1).sections) { tip.hidden = true; xh.setAttribute("visibility", "hidden"); return; }
     let p = curve[0];
     for (const c of curve) { if (c.sections > v) break; p = c; }
     xh.setAttribute("x1", X(p.sections * 100)); xh.setAttribute("x2", X(p.sections * 100)); xh.setAttribute("visibility", "visible");
     tip.textContent = "";
-    tip.append(el("div", "t", `${pct(p.sections, 1)} apurado · ${clock(p.time)}`));
+    tip.append(el("div", "t", `${pct(p.sections)} apurado, às ${clock(p.time)}`));
     for (const key of ["lula", "bolso"]) {
       const row = el("div", "r"); const i = el("i"); i.style.borderTopColor = `var(${CANDIDATES[key].color})`;
-      row.append(i, el("b", null, pct(key === "lula" ? p.raw : 1 - p.raw)), el("span", null, CANDIDATES[key].name));
+      row.append(i, el("b", null, pct(key === "lula" ? p.raw : 1 - p.raw, 2)), el("span", null, CANDIDATES[key].name));
       tip.append(row);
     }
     tip.hidden = false;
@@ -413,7 +481,7 @@ function hover(box, curve, X, m, w) {
   svg.addEventListener("pointerleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
 }
 
-// Tabela por UF: apuração, projeção do candidato A com intervalo e quem lidera a projeção
+// Tabela por UF: apuração, projeção com margem de erro e quem lidera a projeção
 function renderStates(ufs) {
   const z = { 0.8: 1.2816, 0.9: 1.6449, 0.95: 1.96, 0.99: 2.5758 }[PROJ.confidence] ?? 1.96;
   const A = CANDIDATES.lula, B = CANDIDATES.bolso;
@@ -422,23 +490,25 @@ function renderStates(ufs) {
   rows.sort((a, b) => (k === "uf" ? a.uf.localeCompare(b.uf) : (a[k] || 0) - (b[k] || 0)) * ufSort.dir);
   // Sim, a gente sabe: isto é a meia-largura do intervalo de confiança de 95%, não uma "margem
   // de erro" de pesquisa. O povo entende "margem de erro". Licença poética, e foda-se.
-  const cols = [["uf", "Estado"], ["counted", "Seções apuradas"], ["raw", "Votos apurados"], ["share", "Projeção"], ["ci", "Margem de erro"], ["lead", "Líder projetado"]];
+  const cols = [["uf", "Estado"], ["counted", "Seções apuradas"], ["raw", "Votos apurados"], ["share", "Projeção"], ["ci", "Margem de erro"], ["lead", "Lidera a projeção"]];
   const t = $("ufs"); t.textContent = "";
   const head = t.createTHead().insertRow();
   for (const [key, label] of cols) {
     const th = document.createElement("th");
+    th.tabIndex = 0;
     th.textContent = label + (ufSort.key === key ? (ufSort.dir > 0 ? " ↑" : " ↓") : "");
-    th.onclick = () => { ufSort = { key, dir: ufSort.key === key ? -ufSort.dir : 1 }; renderStates(ufs); };
+    const sort = () => { ufSort = { key, dir: ufSort.key === key ? -ufSort.dir : 1 }; renderStates(ufs); };
+    th.onclick = sort; th.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sort(); } };
     head.append(th);
   }
   const body = t.createTBody();
   for (const r of rows) {
     const tr = body.insertRow();
     tr.insertCell().textContent = r.uf === "ZZ" ? "Exterior" : r.uf;
-    const c = tr.insertCell(); const bar = el("span", "bar"); const bi = el("b"); bi.style.width = (r.counted * 100).toFixed(1) + "%"; bar.append(bi); c.append(bar, document.createTextNode(pct(r.counted, 0)));
+    const c = tr.insertCell(); const bar = el("span", "mini"); const bi = el("b"); bi.style.width = (r.counted * 100).toFixed(1) + "%"; bar.append(bi); c.append(bar, document.createTextNode(pct(r.counted, 0)));
     tr.insertCell().append(splitBar(r.raw, A, B));
     tr.insertCell().append(splitBar(r.share, A, B));
-    tr.insertCell().textContent = Number.isFinite(r.ci) ? pp(r.ci) + " pp" : "–";
+    tr.insertCell().textContent = Number.isFinite(r.ci) ? `± ${pp(r.ci, 2)} pp` : "–";
     const lc = tr.insertCell(); lc.className = "lead";
     const who = r.lead === 0 ? A : B, dot = el("span", "dot"); dot.style.background = `var(${who.color})`;
     lc.append(dot, document.createTextNode(Number.isFinite(r.share) ? who.name : "–"));
@@ -449,13 +519,13 @@ function renderStates(ufs) {
 function splitBar(a, A, B) {
   if (!Number.isFinite(a)) return document.createTextNode("–");
   const wrap = el("span", "split");
-  wrap.title = `${A.name} ${pct(a)} · ${B.name} ${pct(1 - a)}`;
+  wrap.title = `${A.name} ${pct(a, 2)}, ${B.name} ${pct(1 - a, 2)}`;
   const track = el("span", "track");
   const ia = el("i"), ib = el("i");
   ia.style.width = (a * 100).toFixed(2) + "%"; ia.style.background = `var(${A.color})`;
   ib.style.width = ((1 - a) * 100).toFixed(2) + "%"; ib.style.background = `var(${B.color})`;
   track.append(ia, ib);
-  wrap.append(el("span", "pa", pct(a, 1)), track, el("span", "pb", pct(1 - a, 1)));
+  wrap.append(el("span", "pa", pct(a)), track, el("span", "pb", pct(1 - a)));
   return wrap;
 }
 

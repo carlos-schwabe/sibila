@@ -163,10 +163,12 @@ function newState(D, P) {
 }
 
 // Marca a seção s como apurada (sem votos: os votos entram por addVotes)
-function markCounted(D, A, s) {
+// `top` é o nível mais fino em que os votos da seção são observados: abaixo dele a seção não
+// entra na contagem dos grupos, porque os votos desses grupos não a incluem.
+function markCounted(D, A, s, top = 4) {
   const t = D.t1[s], l = D.anc[4][s];
   A.cnt[0][0]++; A.C1[0][0] += t;
-  for (let lv = 1; lv < 5; lv++) { const g = D.anc[lv][s]; A.cnt[lv][g]++; A.C1[lv][g] += t; }
+  for (let lv = 1; lv <= top; lv++) { const g = D.anc[lv][s]; A.cnt[lv][g]++; A.C1[lv][g] += t; }
   A.U1[l] -= t; A.U2[l] -= t * t; A.UX[l] -= t * A.x[s];
   A.aptosLeft -= D.aptos[s];
   A.done++;
@@ -203,32 +205,55 @@ export function project(D, sim, P) {
   return snaps;
 }
 
-// Projeção a partir do que a divulgação do TSE publica ao vivo: quais seções já chegaram
-// (`counted`, um Uint8Array por seção) e os votos apurados por grupo do nível `level`
-// (`votes`, pares [Lula, Bolsonaro] por índice de grupo; 1 UF, 2 município, 3 zona). Sem votos
-// por seção, a parte do grupo atribuída a cada seção apurada é proporcional aos votos do
-// 1º turno, e a variância dos níveis abaixo do observado vem de P.prior.
-export function projectFeed(D, P, counted, votes, level, time) {
+// Projeção a partir do que a divulgação do TSE publica ao vivo. `counted` (Uint8Array por
+// seção) marca as seções que já chegaram. `feed` traz os votos apurados, em pares
+// [Lula, Bolsonaro] por índice de grupo:
+//   ufVotes    totais por UF, sempre atuais;
+//   zoneVotes  totais por zona (opcional), cada um do momento em que o arquivo da zona foi
+//              baixado; `covered` marca as seções incluídas nesses totais.
+// Os votos de cada UF que nenhuma zona baixada cobre formam um resíduo da UF. Sem votos por
+// seção, a parte de um grupo atribuída a cada seção é proporcional aos votos do 1º turno, e a
+// variância dos níveis abaixo do observado vem de P.prior.
+export function projectFeed(D, P, counted, feed, time) {
   const { N, anc, nG, t1 } = D;
+  const { ufVotes, zoneVotes, covered } = feed;
   const A = newState(D, P);
   A.prior = P.prior;
-  const gC1 = new Float64Array(nG[level]), gX = new Float64Array(nG[level]);
+  const zC1 = new Float64Array(nG[3]), zX = new Float64Array(nG[3]);
+  const rC1 = new Float64Array(nG[1]), rX = new Float64Array(nG[1]);
   for (let s = 0; s < N; s++) {
-    if (!counted[s]) continue;
-    markCounted(D, A, s);
-    const g = anc[level][s];
-    gC1[g] += t1[s]; gX[g] += t1[s] * A.x[s];
+    const cov = zoneVotes && covered[s];
+    if (!counted[s] && !cov) continue;
+    if (cov) {
+      markCounted(D, A, s, 4);
+      const z = anc[3][s]; zC1[z] += t1[s]; zX[z] += t1[s] * A.x[s];
+    } else {
+      markCounted(D, A, s, 1);
+      const u = anc[1][s]; rC1[u] += t1[s]; rX[u] += t1[s] * A.x[s];
+    }
   }
-  // variância do swing entre as seções de um grupo do nível observado
-  let inner = P.prior.sec;
-  for (let k = level + 1; k < 5; k++) inner += P.prior.tau[k];
-  for (let g = 0; g < nG[level]; g++) {
-    const l = votes[2 * g], w = l + votes[2 * g + 1];
-    if (w <= 0 || gC1[g] <= 0) continue;
-    const ybar = l / w - gX[g] / gC1[g]; // swing médio das seções apuradas do grupo
-    addVotes(D, A, level, g, w, l, w * ybar, w * (ybar * ybar + inner));
+  // variância do swing entre as seções de um grupo, dado o nível observado
+  const inner = (level) => { let v = P.prior.sec; for (let k = level + 1; k < 5; k++) v += P.prior.tau[k]; return v; };
+  const resid = Float64Array.from(ufVotes);
+  if (zoneVotes) {
+    const vz = inner(3);
+    for (let z = 0; z < nG[3]; z++) {
+      const l = zoneVotes[2 * z], w = l + zoneVotes[2 * z + 1];
+      if (w <= 0 || zC1[z] <= 0) continue;
+      const ybar = l / w - zX[z] / zC1[z]; // swing médio das seções apuradas da zona
+      addVotes(D, A, 3, z, w, l, w * ybar, w * (ybar * ybar + vz));
+      const u = D.parent[2][D.parent[3][z]];
+      resid[2 * u] -= l; resid[2 * u + 1] -= zoneVotes[2 * z + 1];
+    }
   }
-  return snapshot(D, A, { ...P, maxLevel: Math.min(P.maxLevel, level) }, time);
+  const vu = inner(1);
+  for (let u = 0; u < nG[1]; u++) {
+    const l = resid[2 * u], w = l + resid[2 * u + 1];
+    if (w <= 0 || l < 0 || rC1[u] <= 0) continue;
+    const ybar = l / w - rX[u] / rC1[u]; // swing médio das seções da UF sem zona baixada
+    addVotes(D, A, 1, u, w, l, w * ybar, w * (ybar * ybar + vu));
+  }
+  return snapshot(D, A, { ...P, maxLevel: Math.min(P.maxLevel, zoneVotes ? 3 : 1) }, time);
 }
 
 // Calcula a projeção e o intervalo a partir do estado da apuração

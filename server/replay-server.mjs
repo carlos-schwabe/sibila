@@ -2,9 +2,11 @@
 // (EA16 por UF; EA20 do Brasil, por UF e por zona), num relógio acelerado. Serve para testar o
 // coletor de ponta a ponta antes da eleição.
 //
-// Uso: node server/replay-server.mjs [--port 8787] [--speed 20] [--start 0]
-//   --speed  quantos minutos da apuração passam por minuto real
-//   --start  minuto da apuração (após as 17:00) em que a reprodução começa
+// Uso: node server/replay-server.mjs [--port 8787] [--speed 20] [--start 0] [--limite 100] [--penalidade 60]
+//   --speed       quantos minutos da apuração passam por minuto real
+//   --start       minuto da apuração (após as 17:00) em que a reprodução começa
+//   --limite      requisições por segundo acima das quais o cliente é bloqueado, como no TSE
+//   --penalidade  segundos de bloqueio; cada requisição durante o bloqueio o reinicia
 import http from "node:http";
 import { readFileSync } from "node:fs";
 import { loadData, realOrder } from "../app/engine.js";
@@ -12,6 +14,7 @@ import { paths } from "./tse-format.mjs";
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? Number(process.argv[i + 1]) : d; };
 const PORT = arg("port", 8787), SPEED = arg("speed", 20), START = arg("start", 0);
+const LIMIT = arg("limite", 100), PENALTY = arg("penalidade", 60);
 export const REPLAY = { ciclo: "ele2026", pleito: 9999, eleicao: 9998 };
 const DAY = "30/10/2022", NEXT_DAY = "31/10/2022";
 
@@ -90,7 +93,20 @@ const routes = [
   [/^\/oficial\/ele2026\/\d+\/dados\/([a-z]{2})\/[a-z]{2}-c0001-e\d{6}-u\.json$/, ([, uf], now) => uf in ufIndex && ea20("uf", uf, ufZones[ufIndex[uf]].flatMap((z) => zoneSecs[z]), now)],
 ];
 
+// Limite de taxa como o do TSE: janela deslizante de 1 s e bloqueio que reinicia
+const hits = [];
+let blockedUntil = 0, blocks = 0;
+function limited() {
+  const t = Date.now();
+  if (t < blockedUntil) { blockedUntil = t + PENALTY * 1000; return true; }
+  hits.push(t);
+  while (t - hits[0] >= 1000) hits.shift();
+  if (hits.length > LIMIT) { blockedUntil = t + PENALTY * 1000; blocks++; console.log(`Bloqueado: ${hits.length} requisições em 1 s (bloqueio nº ${blocks})`); return true; }
+  return false;
+}
+
 http.createServer((req, res) => {
+  if (limited()) { res.writeHead(403); res.end(); return; }
   const now = nowSec();
   for (const [re, fn] of routes) {
     const m = req.url.match(re);
