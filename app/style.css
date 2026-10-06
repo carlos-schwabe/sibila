@@ -154,3 +154,9 @@ table.ufs td.lead { text-align: left; }
 
 /* Antes da apuração: só a manchete de espera */
 body.waiting .duel, body.waiting .tug, body.waiting .progress, body.waiting section.block { display: none; }
+
+/* Contagem regressiva até o início da apuração */
+.countdown { display: flex; justify-content: center; gap: clamp(10px, 3vw, 28px); margin: 4px auto 8px; }
+.countdown .unit { display: flex; flex-direction: column; align-items: center; min-width: clamp(64px, 12vw, 120px); padding: 14px 8px 10px; border-radius: 14px; background: var(--ground); }
+.countdown .n { font: 800 clamp(40px, 8vw, 84px)/1 var(--f-display); font-stretch: 80%; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.countdown .l { margin-top: 6px; font-size: 14px; color: var(--ink-2); }

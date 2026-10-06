@@ -22,6 +22,7 @@ document.body.insertAdjacentHTML("afterbegin", `
 
   <section class="hero" id="hero" aria-live="polite">
     <div class="verdict"><h1 id="headline">Carregando a apuração</h1><p id="subline"></p></div>
+    <div class="countdown" id="countdown" role="timer" aria-live="off" hidden></div>
     <div class="duel" id="duel"></div>
     <div class="tug" id="tug"></div>
     <div class="progress" id="prog"></div>
@@ -65,6 +66,7 @@ const CANDIDATES = DEV ? {
 const CERTAINTY = 0.999;
 const PROJ = { ...DEFAULT_PROJ };
 const ELECTION = DEV ? "30/10/2022" : "25/10/2026";
+const BRT = { timeZone: "America/Sao_Paulo" }; // horários sempre em Brasília, onde quer que o leitor esteja
 const LIVE_REFRESH = 15000; // ms entre leituras de latest.json
 const FULL_REFRESH = 5 * 60000; // ms entre leituras do histórico completo
 const STALE_AFTER = 60000; // ms sem atualização do coletor até avisar o leitor
@@ -156,8 +158,37 @@ let liveStatus = null;
 function renderWaiting(status) {
   document.body.classList.add("waiting");
   $("headline").textContent = "Aguardando o 2º turno";
-  $("subline").textContent = status?.dia ? `A apuração começa às 17h de ${status.dia}. Esta página se atualiza sozinha.` : "Esta página se atualiza sozinha quando a apuração começar.";
+  countdownDay = status?.dia ?? ELECTION;
+  tickCountdown();
   setTseIndicator(status);
+}
+
+// Contagem regressiva até as 17h (horário de Brasília, UTC-3) do dia da eleição
+let countdownDay = null, countdownTimer = null;
+function countdownTarget(day) {
+  const [d, m, y] = day.split("/").map(Number);
+  return Date.UTC(y, m - 1, d, 20, 0, 0); // 17h em Brasília = 20h UTC
+}
+function tickCountdown() {
+  const box = $("countdown");
+  if (!document.body.classList.contains("waiting") || !countdownDay) { box.hidden = true; clearInterval(countdownTimer); countdownTimer = null; return; }
+  const left = countdownTarget(countdownDay) - Date.now();
+  box.hidden = false;
+  if (left <= 0) {
+    box.hidden = true;
+    $("subline").textContent = "A apuração começou. Aguardando os primeiros resultados; esta página se atualiza sozinha.";
+  } else {
+    $("subline").textContent = `A apuração começa às 17h de ${countdownDay}, horário de Brasília.`;
+    const parts = [[Math.floor(left / 86400000), "dia", "dias"], [Math.floor(left / 3600000) % 24, "hora", "horas"], [Math.floor(left / 60000) % 60, "minuto", "minutos"], [Math.floor(left / 1000) % 60, "segundo", "segundos"]];
+    box.textContent = "";
+    for (const [n, one, many] of parts) {
+      const unit = el("div", "unit");
+      unit.append(el("span", "n", String(n).padStart(2, "0")), el("span", "l", n === 1 ? one : many));
+      box.append(unit);
+    }
+    box.setAttribute("aria-label", `Faltam ${parts.map(([n, one, many]) => `${n} ${n === 1 ? one : many}`).join(", ")}`);
+  }
+  if (!countdownTimer) countdownTimer = setInterval(tickCountdown, 1000);
 }
 function setTseIndicator(status) {
   if (!status?.tse) return;
@@ -165,7 +196,7 @@ function setTseIndicator(status) {
   live.classList.toggle("on", false);
   live.classList.toggle("ok", status.tse.ok);
   live.classList.toggle("stale", !status.tse.ok);
-  const since = status.tse.lastOk ? ` desde ${new Date(status.tse.lastOk).toLocaleTimeString("pt-BR")}` : "";
+  const since = status.tse.lastOk ? ` desde ${new Date(status.tse.lastOk).toLocaleTimeString("pt-BR", BRT)}` : "";
   $("updated").textContent = status.tse.ok ? "TSE respondendo" : `TSE sem resposta${since}`;
 }
 if (!DEV) { loadLive(); setInterval(loadLive, LIVE_REFRESH); }
@@ -179,8 +210,8 @@ function render() {
   const stale = !DEV && snap.sections < 1 && age > STALE_AFTER;
   $("live").classList.toggle("stale", stale);
   $("updated").textContent = DEV ? `Reprodução de ${ELECTION}`
-    : stale ? `Sem atualização há ${Math.round(age / 60000)} min (última às ${new Date(view.updated).toLocaleTimeString("pt-BR")})`
-    : `Atualizado às ${new Date(view.updated).toLocaleTimeString("pt-BR")}`;
+    : stale ? `Sem atualização há ${Math.round(age / 60000)} min (última às ${new Date(view.updated).toLocaleTimeString("pt-BR", BRT)})`
+    : `Atualizado às ${new Date(view.updated).toLocaleTimeString("pt-BR", BRT)}`;
   document.body.classList.remove("waiting");
   if (!DEV && liveStatus?.tse && !liveStatus.tse.ok && !stale) setTseIndicator(liveStatus);
   renderHero(snap, st);
