@@ -48,7 +48,7 @@ document.body.insertAdjacentHTML("afterbegin", `
         <div class="map-svg" id="map-svg"></div>
         <figcaption class="map-legend" id="map-legend"></figcaption>
       </figure>
-      <p class="hint">Resultado apurado e projetado em cada estado. Clique no nome de uma coluna para ordenar.</p>
+      <p class="hint">Resultado apurado e projetado em cada estado. Toque ou clique no nome de uma coluna para ordenar.</p>
       <div class="tablewrap"><table class="ufs" id="ufs"></table></div>
     </section>
 

@@ -220,6 +220,17 @@ body.waiting:not(.demo-on) .dash { display: none; }
   .waitcard { padding: 16px; }
   .countdown { gap: 6px; } .countdown .unit { min-width: 0; flex: 1; } .countdown .n { font-size: 34px; }
 }
+/* Celular: a tabela por estado cabe na tela sem rolar para o lado. Sem as barras, cada
+   coluna de votos mostra os dois percentuais um sobre o outro */
+@media (max-width: 640px) {
+  .col-map .tablewrap { margin-inline: -6px; }
+  .col-map table.ufs { font-size: 13px; }
+  .col-map table.ufs th { font-size: 12px; padding: 8px 4px; }
+  .col-map table.ufs td { padding: 6px 4px; }
+  .col-map .mini, .col-map .split .track { display: none; }
+  .col-map .split { flex-direction: column; align-items: flex-end; gap: 0; line-height: 1.25; }
+  .col-map .split .pa, .col-map .split .pb { min-width: 0; text-align: right; }
+}
 @media (prefers-reduced-motion: reduce) { .map-svg path { transition: none; } }
 /* Herói estreito (coluna do painel): a linha de andamento quebra em duas */
 @container (max-width: 440px) {
