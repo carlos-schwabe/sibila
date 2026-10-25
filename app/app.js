@@ -7,6 +7,9 @@ import { BR_MAP } from "./br-map.js";
 // A demonstração (/demo) reproduz o confronto Lula x Flávio no 1º turno de 2026 na
 // ordem real de apuração, com um controle que define o ponto da apuração.
 const DEV = document.documentElement.dataset.mode === "demo";
+// Modo TV (/tv): a página ocupa a tela inteira, sem rolagem nem textos de apoio; antes da
+// primeira seção, a contagem fica num aviso no meio da tela, sobre o painel desfocado
+const TV = document.documentElement.dataset.view === "tv";
 const asset = (p) => new URL(p, import.meta.url).href; // caminhos relativos a este arquivo
 document.body.insertAdjacentHTML("afterbegin", `
 <div class="dev" id="dev" hidden>
@@ -19,7 +22,7 @@ document.body.insertAdjacentHTML("afterbegin", `
 
 <header class="top">
   <div class="brand"><img data-src="img/brasil.webp" alt="Bandeira do Brasil" width="44" height="31"><span><b>2º turno</b> – Acompanhamento e Projeção</span></div>
-  <div class="status-bar"><span class="online" id="online" hidden></span><div class="live" id="live" role="status"><i></i><span id="updated">Carregando…</span></div></div>
+  <div class="status-bar"><a class="tv-link" id="tv-link"></a><span class="online" id="online" hidden></span><div class="live" id="live" role="status"><i></i><span id="updated">Carregando…</span></div></div>
 </header>
 
 <div class="wrap">
@@ -67,6 +70,11 @@ document.body.insertAdjacentHTML("afterbegin", `
 </div>
 `);
 for (const img of document.querySelectorAll("img[data-src]")) img.src = asset(img.dataset.src);
+if (TV) document.body.classList.add("tv");
+// Botão do cabeçalho: entra no modo TV (sempre a página ao vivo) ou volta dela
+const tvLink = document.getElementById("tv-link");
+tvLink.href = asset(TV ? "./" : "tv/");
+tvLink.textContent = TV ? "Sair do modo TV" : "Modo TV";
 if (DEV) document.querySelector(".brand span").innerHTML = "<b>1º turno de 2026</b> – Demonstração";
 // "lula" e "bolso" são os candidatos A (13) e B (22) do motor
 const CANDIDATES = DEV ? {
@@ -85,6 +93,10 @@ const copy = () => (demoOn
   ? { likely: " deve terminar à frente", decided: " termina à frente", chance: "de chance de terminar à frente", call: "apontar quem termina à frente" }
   : { likely: " deve vencer", decided: " está eleito", chance: "de chance de vitória", call: "apontar um vencedor" });
 const BRT = { timeZone: "America/Sao_Paulo" }; // horários sempre em Brasília, onde quer que o leitor esteja
+// Abaixo de 3,5% das seções apuradas a projeção ainda é instável: a página mostra só a
+// apuração, com "Disputa indefinida", a barra de projeção e o caminho no gráfico em cinza
+const PROJ_MIN = 0.035;
+const early = (snap) => !snap.empty && snap.sections < PROJ_MIN;
 const LIVE_REFRESH = 15000; // ms entre leituras de latest.json
 const FULL_REFRESH = 5 * 60000; // ms entre leituras do histórico completo
 const STALE_AFTER = 60000; // ms sem atualização do coletor até avisar o leitor
@@ -312,7 +324,9 @@ function renderHero(snap, st) {
   const h1 = $("headline"), sub = $("subline");
   h1.textContent = "";
   sub.textContent = "";
-  if (snap.empty) {
+  if (early(snap)) {
+    h1.textContent = "Disputa indefinida";
+  } else if (snap.empty) {
     h1.textContent = "Aguardando a apuração";
     sub.textContent = "A projeção aparece aqui com as primeiras seções apuradas pelo TSE.";
   } else if (st.stage === "decided") {
@@ -345,7 +359,8 @@ function renderHero(snap, st) {
   // Dois cabos de guerra na mesma escala: a apuração e, abaixo, a projeção com a margem de erro
   const tug = $("tug"); tug.textContent = "";
   tug.append(tugRow("Apuração", snap.raw, null, "big"));
-  tug.append(tugRow("Projeção", snap.share, snap.empty ? null : [snap.lo, snap.hi], "small"));
+  const hideProj = snap.empty || early(snap);
+  tug.append(tugRow("Projeção", hideProj ? NaN : snap.share, hideProj ? null : [snap.lo, snap.hi], "small"));
 
   // Andamento: ao vivo, a contagem de seções do próprio TSE; na demonstração, a do modelo
   const done = snap.tse?.ts ? snap.tse.st : snap.done, total = snap.tse?.ts || N, frac = total ? done / total : 0;
@@ -398,11 +413,12 @@ function trendSlope(curve, key) {
 
 function renderChart(snap, curve) {
   const box = $("chart");
-  const w = Math.max(300, box.clientWidth), h = w < 600 ? 300 : 380;
+  const keys = ["lula", "bolso"];
+  renderLegend(keys); // antes de medir: a legenda pode quebrar em duas linhas e encolher o gráfico
+  const w = Math.max(300, box.clientWidth), h = TV ? Math.max(260, box.clientHeight) : w < 600 ? 300 : 380;
   const m = { l: 44, r: w < 600 ? 104 : 150, t: 14, b: 30 };
   const iw = w - m.l - m.r, ih = h - m.t - m.b;
   const X = scale(0, 100, m.l, m.l + iw);
-  const keys = ["lula", "bolso"];
   // Eixo y simétrico em torno de 50%, largo o bastante para as linhas apuradas e o intervalo
   let dev = 0.03;
   if (snap.empty) dev = 0.04;
@@ -423,7 +439,6 @@ function renderChart(snap, curve) {
   if (snap.empty) { // espera: só os eixos e um aviso
     s += `<text x="${m.l + iw / 2}" y="${m.t + ih * 0.3}" text-anchor="middle">A curva começa com as</text><text x="${m.l + iw / 2}" y="${m.t + ih * 0.3 + 18}" text-anchor="middle">primeiras seções apuradas</text></svg>`;
     box.innerHTML = s;
-    renderLegend(keys);
     return;
   }
   // Marcador de "agora" e a região ainda não apurada
@@ -431,7 +446,9 @@ function renderChart(snap, curve) {
   s += `<line x1="${x0}" x2="${x0}" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink-2)"/>`;
   const late = snap.sections > 0.8;
   s += `<text x="${late ? x0 - 8 : x0 + 8}" y="${m.t + 16}" text-anchor="${late ? "end" : "start"}">agora, ${pct(snap.sections, 0)} apurado</text>`;
-  if (!late) s += `<text x="${X(100) - 6}" y="${m.t + ih - 8}" text-anchor="end">seções apuradas</text>`;
+  const noProj = early(snap);
+  if (noProj) s += `<text x="${X(100) - 6}" y="${m.t + ih - 8}" text-anchor="end">projeção a partir de ${pct(PROJ_MIN)}</text>`;
+  else if (!late) s += `<text x="${X(100) - 6}" y="${m.t + ih - 8}" text-anchor="end">seções apuradas</text>`;
   s += `<g clip-path="url(#clip)">`;
   const labels = [];
   for (const key of keys) {
@@ -446,7 +463,7 @@ function renderChart(snap, curve) {
     const ctl = (yEnd) => { const [cx, cy] = c1(yEnd); return `C${fmt(cx)},${fmt(cy)} ${fmt(x0 + dx * 0.6)},${fmt(yEnd)} ${fmt(xe)},${fmt(yEnd)}`; };
     const back = (yEnd) => { const [cx, cy] = c1(yEnd); return `C${fmt(x0 + dx * 0.6)},${fmt(yEnd)} ${fmt(cx)},${fmt(cy)} ${fmt(x0)},${fmt(y0)}`; };
     const yLo = Y(v.lo), yHi = Y(v.hi), yP = Y(v.share);
-    if (dx > 0.5) {
+    if (dx > 0.5 && !noProj) {
       s += `<path d="M${fmt(x0)},${fmt(y0)} ${ctl(yHi)} L${fmt(xe)},${fmt(yLo)} ${back(yLo)} Z" fill="${col}" fill-opacity="0.13"/>`;
       s += `<path d="M${fmt(x0)},${fmt(y0)} ${ctl(yP)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="6 5"/>`;
       s += `<line x1="${xe}" x2="${xe}" y1="${yHi}" y2="${yLo}" stroke="${col}" stroke-width="2"/>`;
@@ -454,12 +471,12 @@ function renderChart(snap, curve) {
     }
     s += `<path d="${pts.map(([x, y], i) => `${i ? "L" : "M"}${fmt(x)},${fmt(y)}`).join("")}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round"/>`;
     s += `<circle cx="${x0}" cy="${y0}" r="4.5" fill="${col}" stroke="var(--paper)" stroke-width="2"/>`;
-    labels.push({ y: yP, name: w < 600 ? c.name.split(" ")[0] : c.name, val: `${pct(v.share)} projetado` });
+    if (!noProj) labels.push({ y: yP, name: w < 600 ? c.name.split(" ")[0] : c.name, val: `${pct(v.share)} projetado` });
   }
   s += `</g>`;
   // rótulos finais, afastados se colidirem
   labels.sort((a, b) => a.y - b.y);
-  if (labels[1].y - labels[0].y < 38) { const mid = (labels[0].y + labels[1].y) / 2; labels[0].y = mid - 19; labels[1].y = mid + 19; }
+  if (labels.length === 2 && labels[1].y - labels[0].y < 38) { const mid = (labels[0].y + labels[1].y) / 2; labels[0].y = mid - 19; labels[1].y = mid + 19; }
   for (const L of labels) {
     s += `<text class="lab" x="${xe + 12}" y="${L.y - 2}">${L.name}</text>`;
     s += `<text x="${xe + 12}" y="${L.y + 14}">${L.val}</text>`;
@@ -468,7 +485,6 @@ function renderChart(snap, curve) {
   s += `</svg>`;
   box.innerHTML = s;
 
-  renderLegend(keys);
   hover(box, curve, X, w);
 }
 function renderLegend(keys) {

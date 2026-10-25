@@ -69,6 +69,7 @@ const files = new Map();
 })(ROOT);
 files.set("/", files.get("/index.html"));
 files.set("/demo/", files.get("/demo/index.html"));
+files.set("/tv/", files.get("/tv/index.html"));
 
 // JSON ao vivo: começam com o que estiver gravado (retomada após reinício)
 function setLive(name, data) { files.set(`/live/${name}`, entry(Buffer.from(JSON.stringify(data)), ".json", LIVE_CACHE)); }
@@ -123,7 +124,7 @@ http.createServer((req, res) => {
     res.end(JSON.stringify({ online: Math.max(1, visits.online) }));
     req.resume(); return;
   }
-  if (path === "/demo") { res.writeHead(301, { location: "/demo/" }); res.end(); return; }
+  if (path === "/demo" || path === "/tv") { res.writeHead(301, { location: path + "/" }); res.end(); return; }
   const f = files.get(path);
   if (!f || (req.method !== "GET" && req.method !== "HEAD")) {
     res.writeHead(f ? 405 : 404, { "content-type": "text/plain; charset=utf-8" }); res.end(f ? "Método não permitido" : "Não encontrado"); return;
