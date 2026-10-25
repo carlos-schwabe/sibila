@@ -163,17 +163,14 @@ table.ufs td.lead { text-align: left; }
 .credit a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* Antes da apuração: só a manchete de espera */
-body.waiting:not(.demo-on) .dash { display: none; }
+body.waiting .dash { display: none; }
 
-/* Espera na página ao vivo: faixa com a contagem no topo e a demonstração logo abaixo */
+/* Espera na página ao vivo: faixa com a contagem e o link para a demonstração */
 .waitcard { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; background: var(--paper); border-radius: 16px; margin-bottom: 16px; padding: 20px 24px; }
 .waitcard h1 { font: 800 clamp(30px, 4vw, 44px)/1 var(--f-display); font-stretch: 80%; letter-spacing: -0.02em; margin: 0; }
 .waitcard p { margin: 8px 0 0; color: var(--ink-2); font-size: 16px; }
-.demo-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 560px); gap: 8px 24px; align-items: center; margin-bottom: 16px; }
-.demo-intro h2 { font: 700 20px/1.15 var(--f-display); font-stretch: 85%; margin: 0 0 2px; }
-.demo-intro p { margin: 0; color: var(--ink-2); font-size: 14px; }
-.dev.inline { position: static; border-radius: 12px; padding-inline: 16px; }
-.dev.inline .dev-in { max-width: none; }
+.demo-link { display: inline-block; margin-top: 12px; font-weight: 700; color: var(--b); text-decoration: underline; text-underline-offset: 3px; }
+.demo-link:hover { color: var(--ink); }
 /* Celular: o controle ganha uma linha inteira, com o rótulo e o andamento acima dele */
 @media (max-width: 520px) {
   .dev-in { grid-template-columns: auto minmax(0, 1fr); row-gap: 6px; }
@@ -216,7 +213,6 @@ body.waiting:not(.demo-on) .dash { display: none; }
   .wrap { padding-inline: 12px; }
   .top { padding-inline: 16px; }
   .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero" "map" "chart"; grid-template-rows: none; gap: 12px; }
-  .demo-intro { grid-template-columns: minmax(0, 1fr); }
   .waitcard { padding: 16px; }
   .countdown { gap: 6px; } .countdown .unit { min-width: 0; flex: 1; } .countdown .n { font-size: 34px; }
 }

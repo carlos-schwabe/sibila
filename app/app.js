@@ -2,8 +2,8 @@ import { DEFAULT_PROJ, callStatus } from "./engine.js";
 import { BR_MAP } from "./br-map.js";
 
 // Página ao vivo (/) lê o histórico gravado pelo coletor (server/poller.mjs) em live/. Antes de
-// a apuração começar, mostra a contagem regressiva e, abaixo dela, a demonstração.
-// A demonstração (/demo e na espera) reproduz o confronto Lula x Flávio no 1º turno de 2026 na
+// a apuração começar, mostra só a contagem regressiva, com um link para a demonstração.
+// A demonstração (/demo) reproduz o confronto Lula x Flávio no 1º turno de 2026 na
 // ordem real de apuração, com um controle que define o ponto da apuração.
 const DEV = document.documentElement.dataset.mode === "demo";
 const asset = (p) => new URL(p, import.meta.url).href; // caminhos relativos a este arquivo
@@ -23,15 +23,10 @@ document.body.insertAdjacentHTML("afterbegin", `
 
 <div class="wrap">
   <section class="waitcard" id="waitcard" hidden>
-    <div class="wait-text"><h1>Aguardando o 2º turno</h1><p id="wait-sub"></p></div>
+    <div class="wait-text"><h1>Aguardando o 2º turno</h1><p id="wait-sub"></p>
+    <a class="demo-link" href="demo/">Veja a demonstração com a apuração do 1º turno de 2026 →</a></div>
     <div class="countdown" id="countdown" role="timer" aria-live="off"></div>
   </section>
-
-  <div class="demo-intro" id="demo-intro" hidden>
-    <div><h2>Enquanto isso: a projeção no 1º turno de 2026</h2>
-    <p>Reprodução da apuração de 04/10/2026 (confronto Lula × Flávio), na ordem real em que as seções chegaram. Arraste o controle e veja a projeção chegar ao resultado antes da contagem.</p></div>
-    <div id="demo-slot"></div>
-  </div>
 
   <div class="dash">
     <section class="hero col-hero" id="hero" aria-live="polite">
@@ -115,7 +110,6 @@ function request() {
 function startDemo() {
   if (worker) return;
   demoOn = true;
-  document.body.classList.add("demo-on");
   worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
   worker.onmessage = ({ data }) => {
     if (!demoOn) return;
@@ -127,24 +121,9 @@ function startDemo() {
     if (queued) { queued = false; request(); }
   };
   worker.onerror = (e) => showError("Não foi possível iniciar o motor: " + (e.message || "erro no worker") + ". Sirva a pasta app por HTTP.");
-  const bar = $("dev");
-  bar.hidden = false;
-  if (!DEV) { // na página ao vivo, o controle fica dentro da seção da demonstração
-    bar.classList.add("inline");
-    bar.querySelector("b").textContent = "Demonstração";
-    $("demo-slot").append(bar);
-    $("demo-intro").hidden = false;
-  }
+  $("dev").hidden = false;
   showProgress();
   request();
-}
-// Quando a apuração real começa, a demonstração sai da página ao vivo
-function stopDemo() {
-  if (!worker || DEV) return;
-  worker.terminate();
-  worker = null; demoOn = false; pending = queued = false; view = null;
-  document.body.classList.remove("demo-on", "waiting");
-  $("dev").hidden = true; $("demo-intro").hidden = true; $("waitcard").hidden = true;
 }
 function showError(msg) { const u = $("updated"); u.textContent = ""; u.append(el("span", "err", msg)); }
 
@@ -175,7 +154,6 @@ async function loadLive() {
     liveStatus = status;
     const p = latest?.point;
     if (!p) { renderWaiting(status); return; }
-    if (demoOn) { stopDemo(); return loadLive(); } // apuração começou: sai a demonstração
     let curve = view?.curve ?? [];
     if (full && history) {
       curve = (history.sections ?? []).map((sec, i) => ({ sections: sec, time: history.t[i], raw: history.raw[i], done: history.done[i] }));
@@ -204,7 +182,6 @@ function renderWaiting(status) {
   countdownDay = status?.dia ?? LIVE_DAY;
   tickCountdown();
   setTseIndicator(status);
-  startDemo();
 }
 
 // Contagem regressiva até as 17h (horário de Brasília, UTC-3) do dia da eleição
@@ -278,8 +255,6 @@ function render() {
   const st = callStatus(snap);
   if (DEV) {
     $("updated").textContent = `Reprodução de ${DEMO_DAY}`;
-  } else if (demoOn) {
-    setTseIndicator(liveStatus); // demonstração na espera: o cabeçalho continua falando do TSE
   } else {
     $("live").classList.toggle("on", snap.sections < 1);
     const age = Date.now() - new Date(view.updated).getTime();
@@ -288,6 +263,7 @@ function render() {
     $("updated").textContent = stale ? `Sem atualização há ${Math.round(age / 60000)} min (última às ${new Date(view.updated).toLocaleTimeString("pt-BR", BRT)})`
       : `Atualizado às ${new Date(view.updated).toLocaleTimeString("pt-BR", BRT)}`;
     document.body.classList.remove("waiting");
+    $("waitcard").hidden = true;
     if (liveStatus?.tse && !liveStatus.tse.ok && !stale) setTseIndicator(liveStatus);
   }
   renderHero(snap, st);
