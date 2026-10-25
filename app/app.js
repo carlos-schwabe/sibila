@@ -2,7 +2,8 @@ import { DEFAULT_PROJ, callStatus } from "./engine.js";
 import { BR_MAP } from "./br-map.js";
 
 // Página ao vivo (/) lê o histórico gravado pelo coletor (server/poller.mjs) em live/. Antes de
-// a apuração começar, mostra só a contagem regressiva, com um link para a demonstração.
+// a apuração começar, mostra a contagem regressiva (com um link para a demonstração) e o painel
+// zerado, até chegar o primeiro dado do TSE.
 // A demonstração (/demo) reproduz o confronto Lula x Flávio no 1º turno de 2026 na
 // ordem real de apuração, com um controle que define o ponto da apuração.
 const DEV = document.documentElement.dataset.mode === "demo";
@@ -149,7 +150,7 @@ async function loadLive() {
   // status.json: fase e saúde do TSE, publicados pelo servidor (ausente fora do server/main.mjs)
   const statusP = getJson("status.json").catch(() => null);
   try {
-    const full = !view || Date.now() - lastFull > FULL_REFRESH;
+    const full = !view || view.empty || Date.now() - lastFull > FULL_REFRESH;
     const [history, latest, status] = await Promise.all([full ? getJson("history.json").catch(() => null) : null, getJson("latest.json").catch(() => null), statusP]);
     liveStatus = status;
     const p = latest?.point;
@@ -182,6 +183,16 @@ function renderWaiting(status) {
   countdownDay = status?.dia ?? LIVE_DAY;
   tickCountdown();
   setTseIndicator(status);
+  if (!view) { view = emptyView(); render(); }
+}
+// Painel zerado da espera: nenhuma seção apurada, sem projeção, todos os estados em cinza
+function emptyView() {
+  const blank = { counted: 0, raw: NaN, share: NaN, se: NaN };
+  return {
+    empty: true, curve: [], updated: null,
+    snap: { empty: true, sections: 0, done: 0, raw: NaN, share: NaN, lo: NaN, hi: NaN, pWin: NaN, lulaVotes: 0, bolsoVotes: 0, aptosLeft: Infinity },
+    ufs: [...Object.keys(BR_MAP.names), "ZZ"].sort().map((uf) => ({ uf, ...blank })),
+  };
 }
 
 // Contagem regressiva até as 17h (horário de Brasília, UTC-3) do dia da eleição
@@ -255,6 +266,8 @@ function render() {
   const st = callStatus(snap);
   if (DEV) {
     $("updated").textContent = `Reprodução de ${DEMO_DAY}`;
+  } else if (view.empty) {
+    setTseIndicator(liveStatus); // na espera, o cabeçalho fala do TSE
   } else {
     $("live").classList.toggle("on", snap.sections < 1);
     const age = Date.now() - new Date(view.updated).getTime();
@@ -293,13 +306,16 @@ function renderHero(snap, st) {
   const lead = CANDIDATES[st.winner], lv = cand(snap, st.winner);
   document.body.classList.toggle("won-a", st.stage === "decided" && st.winner === "lula");
   document.body.classList.toggle("won-b", st.stage === "decided" && st.winner === "bolso");
-  const projText = `${pct(lv.share)} ± ${pp(lv.hi - lv.share)} na projeção`;
+  const projText = snap.empty ? "" : `${pct(lv.share)} ± ${pp(lv.hi - lv.share)} na projeção`;
   const nameEl = () => { const n = el("span", "cand-name", lead.name); n.style.color = `var(${lead.color})`; return n; };
   // Veredito, com a projeção do líder logo abaixo
   const h1 = $("headline"), sub = $("subline");
   h1.textContent = "";
   sub.textContent = "";
-  if (st.stage === "decided") {
+  if (snap.empty) {
+    h1.textContent = "Aguardando a apuração";
+    sub.textContent = "A projeção aparece aqui com as primeiras seções apuradas pelo TSE.";
+  } else if (st.stage === "decided") {
     h1.append(nameEl(), document.createTextNode(copy().decided), el("span", "confirma", "Confirmado"));
     sub.append(el("strong", "proj-line", projText), el("span", null, `A vantagem de ${num(Math.abs(snap.lulaVotes - snap.bolsoVotes))} votos já supera os ${num(snap.aptosLeft)} eleitores que ainda faltam apurar.`));
   } else if (st.stage === "likely") {
@@ -322,21 +338,21 @@ function renderHero(snap, st) {
     for (const d of c.number) keys.append(el("kbd", null, d));
     who.append(keys, el("span", "name", c.name));
     const photo = el("img", "photo"); photo.src = c.photo; photo.alt = c.name; photo.width = 88; photo.height = 88;
-    side.append(photo, who, el("div", "share", pct(v.raw, 2)), el("div", "counted", `${num(v.votes)} votos`));
+    side.append(photo, who, el("div", "share", snap.empty ? "0,00%" : pct(v.raw, 2)), el("div", "counted", `${num(v.votes)} votos`));
     duel.append(side);
   }
 
   // Dois cabos de guerra na mesma escala: a apuração e, abaixo, a projeção com a margem de erro
   const tug = $("tug"); tug.textContent = "";
   tug.append(tugRow("Apuração", snap.raw, null, "big"));
-  tug.append(tugRow("Projeção", snap.share, [snap.lo, snap.hi], "small"));
+  tug.append(tugRow("Projeção", snap.share, snap.empty ? null : [snap.lo, snap.hi], "small"));
 
   // Andamento: ao vivo, a contagem de seções do próprio TSE; na demonstração, a do modelo
-  const done = snap.tse?.ts ? snap.tse.st : snap.done, total = snap.tse?.ts || N, frac = done / total;
+  const done = snap.tse?.ts ? snap.tse.st : snap.done, total = snap.tse?.ts || N, frac = total ? done / total : 0;
   const prog = $("prog"); prog.textContent = "";
   const meter = el("div", "meter"), mb = el("b"); mb.style.width = (frac * 100).toFixed(2) + "%"; meter.append(mb);
   const big = el("div", "big", `${pct(frac)} das seções apuradas`);
-  const meta = el("div", "meta", `${num(done)} de ${num(total)} seções, ${num(snap.lulaVotes + snap.bolsoVotes)} votos válidos.`);
+  const meta = el("div", "meta", snap.empty ? "Nenhuma seção apurada ainda." : `${num(done)} de ${num(total)} seções, ${num(snap.lulaVotes + snap.bolsoVotes)} votos válidos.`);
   prog.append(meter, big, meta);
 }
 
@@ -347,8 +363,10 @@ function tugRow(label, a, ci, size) {
   const track = el("div", "track");
   const bar = el("div", "bar");
   const ia = el("i", "a"), ib = el("i", "b");
-  ia.style.width = (a * 100).toFixed(3) + "%"; ib.style.width = ((1 - a) * 100).toFixed(3) + "%";
-  bar.append(ia, ib);
+  if (Number.isFinite(a)) { // sem dados, a barra fica só no cinza
+    ia.style.width = (a * 100).toFixed(3) + "%"; ib.style.width = ((1 - a) * 100).toFixed(3) + "%";
+    bar.append(ia, ib);
+  }
   track.append(bar);
   if (ci) {
     const band = el("span", "ci");
@@ -387,8 +405,9 @@ function renderChart(snap, curve) {
   const keys = ["lula", "bolso"];
   // Eixo y simétrico em torno de 50%, largo o bastante para as linhas apuradas e o intervalo
   let dev = 0.03;
-  for (const c of curve) if (c.sections > 0.01) dev = Math.max(dev, Math.abs(c.raw - 0.5));
-  dev = Math.max(dev, Math.abs(snap.raw - 0.5), Math.min(0.2, Math.max(Math.abs(snap.hi - 0.5), Math.abs(snap.lo - 0.5))));
+  if (snap.empty) dev = 0.04;
+  else for (const c of curve) if (c.sections > 0.01) dev = Math.max(dev, Math.abs(c.raw - 0.5));
+  if (!snap.empty) dev = Math.max(dev, Math.abs(snap.raw - 0.5), Math.min(0.2, Math.max(Math.abs(snap.hi - 0.5), Math.abs(snap.lo - 0.5))));
   dev = Math.ceil((dev + 0.01) * 50) / 50;
   const Y = scale(0.5 - dev, 0.5 + dev, m.t + ih, m.t);
   const step = dev > 0.1 ? 0.05 : dev > 0.05 ? 0.02 : 0.01;
@@ -401,6 +420,12 @@ function renderChart(snap, curve) {
   for (const v of [0, 25, 50, 75, 100]) s += `<text x="${X(v)}" y="${h - 8}" text-anchor="middle">${v}%</text>`;
   s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${Y(0.5)}" y2="${Y(0.5)}" stroke="var(--ink-3)" stroke-dasharray="2 4"/>`;
   const x0 = X(snap.sections * 100), xe = X(100);
+  if (snap.empty) { // espera: só os eixos e um aviso
+    s += `<text x="${m.l + iw / 2}" y="${m.t + ih * 0.3}" text-anchor="middle">A curva começa com as</text><text x="${m.l + iw / 2}" y="${m.t + ih * 0.3 + 18}" text-anchor="middle">primeiras seções apuradas</text></svg>`;
+    box.innerHTML = s;
+    renderLegend(keys);
+    return;
+  }
   // Marcador de "agora" e a região ainda não apurada
   s += `<rect x="${x0}" y="${m.t}" width="${xe - x0}" height="${ih}" fill="var(--rule)" fill-opacity="0.35"/>`;
   s += `<line x1="${x0}" x2="${x0}" y1="${m.t}" y2="${m.t + ih}" stroke="var(--ink-2)"/>`;
@@ -443,11 +468,13 @@ function renderChart(snap, curve) {
   s += `</svg>`;
   box.innerHTML = s;
 
+  renderLegend(keys);
+  hover(box, curve, X, w);
+}
+function renderLegend(keys) {
   const legend = $("legend"); legend.textContent = "";
   for (const key of keys) { const sp = el("span"); const i = el("i"); i.style.borderTopColor = `var(${CANDIDATES[key].color})`; sp.append(i, document.createTextNode(CANDIDATES[key].name)); legend.append(sp); }
   for (const [label, cls] of [["Caminho até a projeção", "dash"], [`Intervalo de ${conf}%`, "box"]]) { const sp = el("span"); const i = el("i", cls); sp.append(i, document.createTextNode(label)); legend.append(sp); }
-
-  hover(box, curve, X, w);
 }
 
 function hover(box, curve, X, w) {

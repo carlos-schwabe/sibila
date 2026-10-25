@@ -162,9 +162,6 @@ table.ufs td.lead { text-align: left; }
 .credit a:hover { background: var(--paper); }
 .credit a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-/* Antes da apuração: só a manchete de espera */
-body.waiting .dash { display: none; }
-
 /* Espera na página ao vivo: faixa com a contagem e o link para a demonstração */
 .waitcard { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; background: var(--paper); border-radius: 16px; margin-bottom: 16px; padding: 20px 24px; }
 .waitcard h1 { font: 800 clamp(30px, 4vw, 44px)/1 var(--f-display); font-stretch: 80%; letter-spacing: -0.02em; margin: 0; }
